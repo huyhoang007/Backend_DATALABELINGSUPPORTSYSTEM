@@ -4,10 +4,7 @@ import com.datalabeling.datalabelingsupportsystem.dto.request.User.CreateUserReq
 import com.datalabeling.datalabelingsupportsystem.dto.response.User.UserResponse;
 import com.datalabeling.datalabelingsupportsystem.service.User.IUserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Bean;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

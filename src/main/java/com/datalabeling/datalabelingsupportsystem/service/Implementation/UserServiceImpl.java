@@ -1,4 +1,4 @@
-package com.datalabeling.datalabelingsupportsystem.service.User;
+package com.datalabeling.datalabelingsupportsystem.service.Implementation;
 
 import com.datalabeling.datalabelingsupportsystem.dto.request.User.CreateUserRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.User.UserResponse;

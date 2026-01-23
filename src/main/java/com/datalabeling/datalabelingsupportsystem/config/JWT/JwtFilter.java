@@ -8,13 +8,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -26,7 +24,6 @@ public class JwtFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-
         return path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/api/auth");
@@ -40,25 +37,30 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String jwt = authHeader.substring(7);
-            String username = jwtService.extractUsername(jwt);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String jwt = authHeader.substring(7);
+        String username = jwtService.extractUsername(jwt);
+
+        if (username != null
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             User user = userRepository.findByUsername(username).orElse(null);
 
-            if (user != null) {
-                UsernamePasswordAuthenticationToken auth =
+            if (user != null && jwtService.isTokenValid(jwt, user)) {
+
+                UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                user.getUsername(),
+                                user,                 // ✅ principal = UserDetails
                                 null,
-                                List.of(
-                                        new SimpleGrantedAuthority(
-                                                "ROLE_" + user.getRole().getRoleName()
-                                        )
-                                )
+                                user.getAuthorities() // ✅ lấy trực tiếp từ User
                         );
 
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                SecurityContextHolder.getContext()
+                        .setAuthentication(authentication);
             }
         }
 
