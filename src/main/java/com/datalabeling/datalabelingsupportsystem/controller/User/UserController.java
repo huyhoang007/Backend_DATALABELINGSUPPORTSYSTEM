@@ -7,45 +7,68 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
-
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@Tag(name = "User Management")
 @SecurityRequirement(name = "BearerAuth")
-@Tag(name = "User Management", description = "APIs for user view and update")
 public class UserController {
 
     private final UserService userService;
 
-    @Operation(summary = "Get current user", description = "Return currently authenticated user details")
-    @PreAuthorize("isAuthenticated()")
+    //TẤT CẢ ROLE - Xem profile của chính mình
     @GetMapping("/me")
+    @Operation(summary = "Get current user profile", 
+               description = "Works for all roles: ADMIN, MANAGER, ANNOTATOR, REVIEWER")
     public ResponseEntity<UserResponse> getCurrentUser() {
         return ResponseEntity.ok(userService.getCurrentUser());
     }
- 
-    @Operation(summary = "Get all users", description = "Return list of all users (admin only)")
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping
-    public ResponseEntity<List<UserResponse>> getAllUsers() {
-        List<UserResponse> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
+
+    //TẤT CẢ ROLE - Update profile của chính mình
+    @PutMapping("/me")
+    @Operation(summary = "Update current user profile")
+    public ResponseEntity<UserResponse> updateCurrentUser(@RequestBody UpdateUserRequest request) {
+        return ResponseEntity.ok(userService.updateCurrentUser(request));
     }
 
-    @Operation(summary = "Update user", description = "Update user profile (self or admin)")
-    @PreAuthorize("isAuthenticated()")
-    @PatchMapping("/{userId}")
+    //CHỈ ADMIN - Xem tất cả users
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get all users (ADMIN only)")
+    public ResponseEntity<Page<UserResponse>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(userService.getAllUsers(page, size));
+    }
+
+    //CHỈ ADMIN - Xem user cụ thể
+    @GetMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get user by ID (ADMIN only)")
+    public ResponseEntity<UserResponse> getUserById(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.getUserById(userId));
+    }
+
+    //ADMIN hoặc chính user đó - Update user
+    @PutMapping("/{userId}")
+    @Operation(summary = "Update user (ADMIN or self)")
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable Long userId,
-            @Valid @RequestBody UpdateUserRequest request) {
-        UserResponse response = userService.updateUser(userId, request);
-        return ResponseEntity.ok(response);
+            @RequestBody UpdateUserRequest request) {
+        return ResponseEntity.ok(userService.updateUser(userId, request));
+    }
+
+    //CHỈ ADMIN - Xóa user
+    @DeleteMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete user (ADMIN only)")
+    public ResponseEntity<String> deleteUser(@PathVariable Long userId) {
+        userService.deleteUser(userId);
+        return ResponseEntity.ok("User deleted successfully");
     }
 }

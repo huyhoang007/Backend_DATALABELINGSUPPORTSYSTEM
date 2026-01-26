@@ -6,14 +6,13 @@ import com.datalabeling.datalabelingsupportsystem.pojo.User;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.RoleRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.apache.catalina.Role;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,61 +21,132 @@ public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
 
+      //Lấy thông tin user hiện tại - TẤT CẢ ROLE đều dùng được
+
     public UserResponse getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+        User user = getCurrentAuthenticatedUser();
         return mapToResponse(user);
     }
 
-    public List<UserResponse> getAllUsers() {
-    List<User> users = userRepository.findAll();
-    return users.stream()
-        .map(this::mapToResponse)
-        .collect(Collectors.toList());
+     // Update thông tin user hiện tại - TẤT CẢ ROLE đều dùng được
+    @Transactional
+    public UserResponse updateCurrentUser(UpdateUserRequest request) {
+        User currentUser = getCurrentAuthenticatedUser();
+        
+        // User chỉ có thể update: fullName, email (KHÔNG đổi role, status)
+        if (request.getFullName() != null) {
+            currentUser.setFullName(request.getFullName());
+        }
+        
+        if (request.getEmail() != null) {
+            // Kiểm tra email đã tồn tại chưa (trừ email của chính mình)
+            if (userRepository.existsByEmail(request.getEmail()) 
+                && !currentUser.getEmail().equals(request.getEmail())) {
+                throw new RuntimeException("Email already exists");
+            }
+            currentUser.setEmail(request.getEmail());
+        }
+        
+        User updatedUser = userRepository.save(currentUser);
+        return mapToResponse(updatedUser);
     }
+
+
+     //Lấy tất cả users - CHỈ ADMIN (thêm phân trang)
+
+    public Page<UserResponse> getAllUsers(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return userRepository.findAll(pageable).map(this::mapToResponse);
+    }
+
+
+     //Lấy user theo ID - CHỈ ADMIN
+
+    public UserResponse getUserById(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return mapToResponse(user);
+    }
+
+
+     //Update user KHÁC (dùng cho ADMIN hoặc tự update)
 
     @Transactional
     public UserResponse updateUser(Long userId, UpdateUserRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-
-        User current = userRepository.findByUsername(username)
+        User currentUser = getCurrentAuthenticatedUser();
+        User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        boolean isAdmin = "ADMIN".equals(currentUser.getRole().getRoleName());
+        boolean isSelf = currentUser.getUserId().equals(userId);
 
-        // Allow only the user themselves or ADMIN
-        if (!current.getUserId().equals(user.getUserId())
-                && !"ADMIN".equals(current.getRole().getRoleName())) {
-            throw new RuntimeException("Unauthorized");
+        // Chỉ cho phép: ADMIN update bất kỳ ai, hoặc user tự update chính mình
+        if (!isAdmin && !isSelf) {
+            throw new RuntimeException("Unauthorized: You can only update your own profile");
         }
 
+        // Update thông tin cơ bản
         if (request.getEmail() != null) {
-            user.setEmail(request.getEmail());
+            if (userRepository.existsByEmail(request.getEmail()) 
+                && !targetUser.getEmail().equals(request.getEmail())) {
+                throw new RuntimeException("Email already exists");
+            }
+            targetUser.setEmail(request.getEmail());
         }
         
         if (request.getFullName() != null) {
-            user.setFullName(request.getFullName());
+            targetUser.setFullName(request.getFullName());
         }
         
-        if (request.getStatus() != null) {
-            user.setStatus(request.getStatus());
-        }
-        
-        // Only ADMIN can change roles
-        if (request.getRoleId() != null && "ADMIN".equals(current.getRole().getRoleName())) {
-            com.datalabeling.datalabelingsupportsystem.pojo.Role role = roleRepository.findById(request.getRoleId())
-                    .orElseThrow(() -> new RuntimeException("Role not found"));
-            user.setRole(role);
+        // CHỈ ADMIN mới đổi được status và role
+        if (isAdmin) {
+            if (request.getStatus() != null) {
+                targetUser.setStatus(request.getStatus());
+            }
+            
+            if (request.getRoleId() != null) {
+                com.datalabeling.datalabelingsupportsystem.pojo.Role role = 
+                    roleRepository.findById(request.getRoleId())
+                        .orElseThrow(() -> new RuntimeException("Role not found"));
+                targetUser.setRole(role);
+            }
         }
 
-        user = userRepository.save(user);
-        return mapToResponse(user);
+        User savedUser = userRepository.save(targetUser);
+        return mapToResponse(savedUser);
+    }
+
+
+     //Xóa user - CHỈ ADMIN
+
+    @Transactional
+    public void deleteUser(Long userId) {
+        User currentUser = getCurrentAuthenticatedUser();
+        
+        // Không cho phép xóa chính mình
+        if (currentUser.getUserId().equals(userId)) {
+            throw new RuntimeException("Cannot delete yourself");
+        }
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        userRepository.delete(user);
+    }
+
+
+      //Lấy user đang đăng nhập
+
+    private User getCurrentAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("User not authenticated");
+        }
+        
+        String username = authentication.getName();
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     private UserResponse mapToResponse(User user) {
