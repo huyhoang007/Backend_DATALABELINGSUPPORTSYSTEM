@@ -16,6 +16,13 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+logging:
+  level:
+    com.datalabeling.datalabelingsupportsystem: DEBUG
+    org.springframework.aop: DEBUG
+    org.aspectj: DEBUG
+
 jwt:
   secret: ibelievewecandoitmyguysneverstopgoingweneedtogoforeverlifeisanunstoppablejourneyofobstaclesinwhichwecannotavoid
   expiration: 86400000

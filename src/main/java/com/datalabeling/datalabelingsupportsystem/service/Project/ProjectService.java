@@ -6,6 +6,7 @@ import com.datalabeling.datalabelingsupportsystem.pojo.Project;
 import com.datalabeling.datalabelingsupportsystem.pojo.User;
 import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
+import com.datalabeling.datalabelingsupportsystem.service.ActivityLog.ActivityLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -48,9 +49,9 @@ public class ProjectService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        project = projectRepository.save(project);
+        Project savedProject = projectRepository.save(project);
 
-        return mapToResponse(project);
+        return mapToResponse(savedProject);
     }
 
     public List<ProjectResponse> getMyProjects() {
@@ -88,21 +89,11 @@ public class ProjectService {
 
     @Transactional
     public void deleteProject(Long projectId) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-
-        User manager = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
-        // Kiểm tra quyền: chỉ manager của project mới được xóa
-        if (!project.getManager().getUserId().equals(manager.getUserId())) {
-            throw new RuntimeException("You don't have permission to delete this project");
-        }
-
         projectRepository.delete(project);
+
     }
 
     @Transactional
@@ -139,9 +130,9 @@ public class ProjectService {
                 .dataType(project.getDataType())
                 .status(project.getStatus())
                 .description(project.getDescription())
-                .managerName(project.getManager().getFullName() != null 
-                    ? project.getManager().getFullName() 
-                    : project.getManager().getUsername())
+                .managerName(project.getManager().getFullName() != null
+                        ? project.getManager().getFullName()
+                        : project.getManager().getUsername())
                 .managerId(project.getManager().getUserId())
                 .createdAt(project.getCreatedAt())
                 .build();
