@@ -1,5 +1,6 @@
 package com.datalabeling.datalabelingsupportsystem.controller.User;
 
+import com.datalabeling.datalabelingsupportsystem.dto.request.User.CreateUserRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.request.User.UpdateUserRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.User.UserResponse;
 import com.datalabeling.datalabelingsupportsystem.service.User.UserService;
@@ -20,6 +21,15 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+
+    //CHỈ ADMIN - Tạo user mới
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Create new user (ADMIN only)", 
+               description = "Admin creates user and assigns role")
+    public ResponseEntity<UserResponse> createUser(@RequestBody CreateUserRequest request) {
+        return ResponseEntity.ok(userService.createUser(request));
+    }
 
     //TẤT CẢ ROLE - Xem profile của chính mình
     @GetMapping("/me")
@@ -61,6 +71,22 @@ public class UserController {
             @PathVariable Long userId,
             @RequestBody UpdateUserRequest request) {
         return ResponseEntity.ok(userService.updateUser(userId, request));
+    }
+
+    //CHỈ ADMIN - Ban user
+    @PatchMapping("/{userId}/ban")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Ban user (ADMIN only)")
+    public ResponseEntity<UserResponse> banUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.banUser(userId));
+    }
+
+    //CHỈ ADMIN - Unban user
+    @PatchMapping("/{userId}/unban")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Unban user (ADMIN only)")
+    public ResponseEntity<UserResponse> unbanUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.unbanUser(userId));
     }
 
     //CHỈ ADMIN - Xóa user

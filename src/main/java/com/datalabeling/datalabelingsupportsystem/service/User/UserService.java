@@ -1,7 +1,9 @@
 package com.datalabeling.datalabelingsupportsystem.service.User;
 
+import com.datalabeling.datalabelingsupportsystem.dto.request.User.CreateUserRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.request.User.UpdateUserRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.User.UserResponse;
+import com.datalabeling.datalabelingsupportsystem.pojo.Role;
 import com.datalabeling.datalabelingsupportsystem.pojo.User;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.RoleRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
@@ -11,8 +13,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -20,57 +25,85 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
-      //Lấy thông tin user hiện tại - TẤT CẢ ROLE đều dùng được
+    // Tạo user mới - CHỈ ADMIN
+    @Transactional
+    public UserResponse createUser(CreateUserRequest request) {
+        // Kiểm tra username đã tồn tại
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new RuntimeException("Username already exists");
+        }
 
+        // Kiểm tra email đã tồn tại
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        // Lấy role theo roleId
+        Role role = roleRepository.findById(request.getRoleId())
+                .orElseThrow(() -> new RuntimeException("Role not found with ID: " + request.getRoleId()));
+
+        // Tạo user mới
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .fullName(request.getFullName())
+                .role(role)
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        User savedUser = userRepository.save(user);
+        return mapToResponse(savedUser);
+    }
+
+    // Lấy thông tin user hiện tại - TẤT CẢ ROLE đều dùng được
     public UserResponse getCurrentUser() {
         User user = getCurrentAuthenticatedUser();
         return mapToResponse(user);
     }
 
-     // Update thông tin user hiện tại - TẤT CẢ ROLE đều dùng được
+    // Update thông tin user hiện tại - TẤT CẢ ROLE đều dùng được
     @Transactional
     public UserResponse updateCurrentUser(UpdateUserRequest request) {
         User currentUser = getCurrentAuthenticatedUser();
-        
+
         // User chỉ có thể update: fullName, email (KHÔNG đổi role, status)
         if (request.getFullName() != null) {
             currentUser.setFullName(request.getFullName());
         }
-        
+
         if (request.getEmail() != null) {
             // Kiểm tra email đã tồn tại chưa (trừ email của chính mình)
-            if (userRepository.existsByEmail(request.getEmail()) 
-                && !currentUser.getEmail().equals(request.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())
+                    && !currentUser.getEmail().equals(request.getEmail())) {
                 throw new RuntimeException("Email already exists");
             }
             currentUser.setEmail(request.getEmail());
         }
-        
+
+        currentUser.setUpdatedAt(LocalDateTime.now());
         User updatedUser = userRepository.save(currentUser);
         return mapToResponse(updatedUser);
     }
 
-
-     //Lấy tất cả users - CHỈ ADMIN (thêm phân trang)
-
+    // Lấy tất cả users - CHỈ ADMIN (thêm phân trang)
     public Page<UserResponse> getAllUsers(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return userRepository.findAll(pageable).map(this::mapToResponse);
     }
 
-
-     //Lấy user theo ID - CHỈ ADMIN
-
+    // Lấy user theo ID - CHỈ ADMIN
     public UserResponse getUserById(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         return mapToResponse(user);
     }
 
-
-     //Update user KHÁC (dùng cho ADMIN hoặc tự update)
-
+    // Update user KHÁC (dùng cho ADMIN hoặc tự update)
     @Transactional
     public UserResponse updateUser(Long userId, UpdateUserRequest request) {
         User currentUser = getCurrentAuthenticatedUser();
@@ -87,68 +120,91 @@ public class UserService {
 
         // Update thông tin cơ bản
         if (request.getEmail() != null) {
-            if (userRepository.existsByEmail(request.getEmail()) 
-                && !targetUser.getEmail().equals(request.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())
+                    && !targetUser.getEmail().equals(request.getEmail())) {
                 throw new RuntimeException("Email already exists");
             }
             targetUser.setEmail(request.getEmail());
         }
-        
+
         if (request.getFullName() != null) {
             targetUser.setFullName(request.getFullName());
         }
-        
+
         // CHỈ ADMIN mới đổi được status và role
         if (isAdmin) {
             if (request.getStatus() != null) {
                 targetUser.setStatus(request.getStatus());
             }
-            
+
             if (request.getRoleId() != null) {
-                com.datalabeling.datalabelingsupportsystem.pojo.Role role = 
-                    roleRepository.findById(request.getRoleId())
+                Role role = roleRepository.findById(request.getRoleId())
                         .orElseThrow(() -> new RuntimeException("Role not found"));
                 targetUser.setRole(role);
             }
         }
 
+        targetUser.setUpdatedAt(LocalDateTime.now());
         User savedUser = userRepository.save(targetUser);
         return mapToResponse(savedUser);
     }
 
+    // Ban user - CHỈ ADMIN
+    @Transactional
+    public UserResponse banUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-     //Xóa user - CHỈ ADMIN
+        user.setStatus("BANNED");
+        user.setUpdatedAt(LocalDateTime.now());
 
+        User updatedUser = userRepository.save(user);
+        return mapToResponse(updatedUser);
+    }
+
+    // Unban user - CHỈ ADMIN
+    @Transactional
+    public UserResponse unbanUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setStatus("ACTIVE");
+        user.setUpdatedAt(LocalDateTime.now());
+
+        User updatedUser = userRepository.save(user);
+        return mapToResponse(updatedUser);
+    }
+
+    // Xóa user - CHỈ ADMIN
     @Transactional
     public void deleteUser(Long userId) {
         User currentUser = getCurrentAuthenticatedUser();
-        
+
         // Không cho phép xóa chính mình
         if (currentUser.getUserId().equals(userId)) {
             throw new RuntimeException("Cannot delete yourself");
         }
-        
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         userRepository.delete(user);
     }
 
-
-      //Lấy user đang đăng nhập
-
+    // Lấy user đang đăng nhập
     private User getCurrentAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
+
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("User not authenticated");
         }
-        
+
         String username = authentication.getName();
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    // ✅ ĐỔI TÊN từ convertToResponse → mapToResponse
     private UserResponse mapToResponse(User user) {
         return UserResponse.builder()
                 .userId(user.getUserId())
