@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository; 
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
@@ -59,5 +59,3 @@ public class AuthService {
         );
     }
 }
-
-
