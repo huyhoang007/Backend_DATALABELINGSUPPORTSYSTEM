@@ -1,12 +1,12 @@
 package com.datalabeling.datalabelingsupportsystem.service.Project;
 
 import com.datalabeling.datalabelingsupportsystem.dto.request.Project.CreateProjectRequest;
+import com.datalabeling.datalabelingsupportsystem.dto.request.Project.UpdateProjectRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Project.ProjectResponse;
 import com.datalabeling.datalabelingsupportsystem.pojo.Project;
 import com.datalabeling.datalabelingsupportsystem.pojo.User;
 import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
-import com.datalabeling.datalabelingsupportsystem.service.ActivityLog.ActivityLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -79,8 +79,8 @@ public class ProjectService {
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
         // Kiểm tra quyền: chỉ manager của project mới được xem
-        if (!project.getManager().getUserId().equals(manager.getUserId())
-                && !"ADMIN".equals(manager.getRole().getRoleName())) {
+        if (!project.getManager().getUserId().equals(manager.getUserId()))
+                 {
             throw new RuntimeException("You don't have permission to view this project");
         }
 
@@ -118,6 +118,53 @@ public class ProjectService {
         }
 
         project.setStatus(status);
+        project = projectRepository.save(project);
+
+        return mapToResponse(project);
+    }
+
+    @Transactional
+    public ProjectResponse updateProject(Long projectId, UpdateProjectRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+
+        User manager = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        // Kiểm tra quyền
+        if (!project.getManager().getUserId().equals(manager.getUserId())) {
+            throw new RuntimeException("You don't have permission to update this project");
+        }
+
+        // Update các trường nếu có giá trị mới
+        if (request.getName() != null && !request.getName().isBlank()) {
+            // Kiểm tra tên project mới có bị trùng không (trừ chính nó)
+            if (!request.getName().equals(project.getName()) && 
+                projectRepository.existsByNameAndManagerUserId(request.getName(), manager.getUserId())) {
+                throw new RuntimeException("Project name already exists for this manager");
+            }
+            project.setName(request.getName());
+        }
+
+        if (request.getDataType() != null && !request.getDataType().isBlank()) {
+            project.setDataType(request.getDataType());
+        }
+
+        if (request.getDescription() != null) {
+            project.setDescription(request.getDescription());
+        }
+
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            // Validate status
+            if (!List.of("ACTIVE", "INACTIVE", "COMPLETED").contains(request.getStatus())) {
+                throw new RuntimeException("Invalid status");
+            }
+            project.setStatus(request.getStatus());
+        }
+
         project = projectRepository.save(project);
 
         return mapToResponse(project);

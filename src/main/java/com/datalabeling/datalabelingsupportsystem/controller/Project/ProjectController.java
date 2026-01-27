@@ -1,6 +1,7 @@
 package com.datalabeling.datalabelingsupportsystem.controller.Project;
 
 import com.datalabeling.datalabelingsupportsystem.dto.request.Project.CreateProjectRequest;
+import com.datalabeling.datalabelingsupportsystem.dto.request.Project.UpdateProjectRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Project.ProjectResponse;
 import com.datalabeling.datalabelingsupportsystem.service.Project.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -63,6 +64,16 @@ public class ProjectController {
             @PathVariable Long projectId,
             @RequestParam String status) {
         ProjectResponse response = projectService.updateProjectStatus(projectId, status);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Update project", description = "Manager updates project information (name, dataType, description, status)")
+    @PreAuthorize("hasRole('MANAGER')")
+    @PutMapping("/{projectId}")
+    public ResponseEntity<ProjectResponse> updateProject(
+            @PathVariable Long projectId,
+            @Valid @RequestBody UpdateProjectRequest request) {
+        ProjectResponse response = projectService.updateProject(projectId, request);
         return ResponseEntity.ok(response);
     }
 }
