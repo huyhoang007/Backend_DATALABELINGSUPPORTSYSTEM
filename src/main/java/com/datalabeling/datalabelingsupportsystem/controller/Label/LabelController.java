@@ -23,7 +23,7 @@ public class LabelController {
     private final LabelService labelService;
     
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER')")
     @Operation(summary = "Create new label")
     public ResponseEntity<LabelResponse> createLabel(@Valid @RequestBody CreateLabelRequest request) {
         LabelResponse response = labelService.createLabel(request);
@@ -31,6 +31,7 @@ public class LabelController {
     }
     
     @GetMapping
+    @PreAuthorize("hasAnyRole('MANAGER')")
     @Operation(summary = "Get all labels")
     public ResponseEntity<List<LabelResponse>> getAllLabels() {
         List<LabelResponse> labels = labelService.getAllLabels();
@@ -38,6 +39,7 @@ public class LabelController {
     }
     
     @GetMapping("/active")
+    @PreAuthorize("hasAnyRole('MANAGER')")
     @Operation(summary = "Get active labels only")
     public ResponseEntity<List<LabelResponse>> getActiveLabels() {
         List<LabelResponse> labels = labelService.getActiveLabels();
@@ -45,6 +47,7 @@ public class LabelController {
     }
     
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('MANAGER')")
     @Operation(summary = "Get label by ID")
     public ResponseEntity<LabelResponse> getLabelById(@PathVariable Long id) {
         LabelResponse label = labelService.getLabelById(id);
@@ -52,7 +55,7 @@ public class LabelController {
     }
     
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER')")
     @Operation(summary = "Update label")
     public ResponseEntity<LabelResponse> updateLabel(
             @PathVariable Long id,
@@ -62,7 +65,7 @@ public class LabelController {
     }
     
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER')")
     @Operation(summary = "Soft delete label")
     public ResponseEntity<Void> deleteLabel(@PathVariable Long id) {
         labelService.deleteLabel(id);

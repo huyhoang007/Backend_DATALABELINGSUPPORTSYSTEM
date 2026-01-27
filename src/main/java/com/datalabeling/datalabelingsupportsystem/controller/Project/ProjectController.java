@@ -41,7 +41,7 @@ public class ProjectController {
     }
 
     @Operation(summary = "Get project by ID", description = "Get project details by ID")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER')")
     @GetMapping("/{projectId}")
     public ResponseEntity<ProjectResponse> getProjectById(@PathVariable Long projectId) {
         ProjectResponse response = projectService.getProjectById(projectId);

@@ -4,7 +4,6 @@ import com.datalabeling.datalabelingsupportsystem.dto.request.Label.CreateLabelR
 import com.datalabeling.datalabelingsupportsystem.dto.response.Label.LabelResponse;
 import com.datalabeling.datalabelingsupportsystem.pojo.Label;
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRepository;
-import com.datalabeling.datalabelingsupportsystem.service.ActivityLog.ActivityLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,8 +66,6 @@ public class LabelService {
     public LabelResponse updateLabel(Long id, CreateLabelRequest request) {
         Label label = labelRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Label not found"));
-
-        String oldName = label.getLabelName();
 
         label.setLabelName(request.getLabelName());
         label.setColorCode(request.getColorCode());
