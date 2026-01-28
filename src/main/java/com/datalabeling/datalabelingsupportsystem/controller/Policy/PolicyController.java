@@ -27,7 +27,7 @@ public class PolicyController {
     private final PolicyService policyService;
     
     @PostMapping
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER')")
     @Operation(
         summary = "Create a new policy", 
         description = "Create a new labeling error policy (Admin/Manager only)"
@@ -37,7 +37,11 @@ public class PolicyController {
     }
     
     @GetMapping
+<<<<<<< Updated upstream
     @PreAuthorize("hasAnyRole('MANAGER','REVIEWER')")
+=======
+    @PreAuthorize("hasRole('MANAGER')")
+>>>>>>> Stashed changes
     @Operation(
         summary = "Get all policies", 
         description = "Retrieve all policies with pagination (all authenticated users)"
@@ -49,7 +53,11 @@ public class PolicyController {
     }
     
     @GetMapping("/{policyId}")
+<<<<<<< Updated upstream
     @PreAuthorize("hasAnyRole('MANAGER','REVIEWER')")
+=======
+    @PreAuthorize("hasRole('MANAGER')")
+>>>>>>> Stashed changes
     @Operation(
         summary = "Get policy by ID", 
         description = "Retrieve a specific policy by its ID"
@@ -59,7 +67,7 @@ public class PolicyController {
     }
 
     @GetMapping("/error-level/{errorLevel}")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER')")
     @Operation(
         summary = "Get policies by error level", 
         description = "Filter policies by error level (LOW, MEDIUM, HIGH, CRITICAL)"
@@ -72,7 +80,7 @@ public class PolicyController {
     }
     
     @PutMapping("/{policyId}")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER')")
     @Operation(
         summary = "Update policy", 
         description = "Update an existing policy (Admin/Manager only)"
@@ -84,7 +92,7 @@ public class PolicyController {
     }
     
     @DeleteMapping("/{policyId}")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER')")
     @Operation(
         summary = "Delete policy", 
         description = "Delete a policy permanently (Admin only)"
@@ -95,7 +103,7 @@ public class PolicyController {
     }
     
     @PostMapping("/assign")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER')")
     @Operation(
         summary = "Assign policy to project", 
         description = "Link a policy to a specific project (Admin/Manager only)"
@@ -108,7 +116,7 @@ public class PolicyController {
     }
     
     @DeleteMapping("/remove")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER')")
     @Operation(
         summary = "Remove policy from project", 
         description = "Unlink a policy from a project (Admin/Manager only)"
@@ -121,7 +129,11 @@ public class PolicyController {
     }
     
     @GetMapping("/project/{projectId}")
+<<<<<<< Updated upstream
     @PreAuthorize("hasAnyRole('MANAGER','REVIEWER')")
+=======
+    @PreAuthorize("hasRole('MANAGER')")
+>>>>>>> Stashed changes
     @Operation(
         summary = "Get policies by project", 
         description = "Get all policies assigned to a specific project"
