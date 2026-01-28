@@ -44,7 +44,7 @@ public class ProjectService {
                 .name(request.getName())
                 .dataType(request.getDataType())
                 .description(request.getDescription())
-                .status("ACTIVE")
+                .status("DRAFT")
                 .manager(manager)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -63,7 +63,9 @@ public class ProjectService {
 
         List<Project> projects = projectRepository.findByManagerUserId(manager.getUserId());
 
+        // Chỉ lấy các project có status hợp lệ (không lấy project INACTIVE - đã xóa mềm)
         return projects.stream()
+                .filter(project -> !"INACTIVE".equals(project.getStatus()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -79,8 +81,7 @@ public class ProjectService {
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
         // Kiểm tra quyền: chỉ manager của project mới được xem
-        if (!project.getManager().getUserId().equals(manager.getUserId()))
-                 {
+        if (!project.getManager().getUserId().equals(manager.getUserId())) {
             throw new RuntimeException("You don't have permission to view this project");
         }
 
@@ -89,11 +90,23 @@ public class ProjectService {
 
     @Transactional
     public void deleteProject(Long projectId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+
+        User manager = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
-        projectRepository.delete(project);
+        // Kiểm tra quyền: chỉ manager của project mới được xóa
+        if (!project.getManager().getUserId().equals(manager.getUserId())) {
+            throw new RuntimeException("You don't have permission to delete this project");
+        }
 
+        // Soft delete: đổi status thành INACTIVE thay vì xóa hẳn
+        project.setStatus("INACTIVE");
+        projectRepository.save(project);
     }
 
     @Transactional
@@ -112,15 +125,38 @@ public class ProjectService {
             throw new RuntimeException("You don't have permission to update this project");
         }
 
-        // Validate status
-        if (!List.of("ACTIVE", "INACTIVE", "COMPLETED").contains(status)) {
+        // Validate status: chỉ cho phép DRAFT, IN_PROGRESS, PAUSED, COMPLETED
+        if (!List.of("DRAFT", "IN_PROGRESS", "PAUSED", "COMPLETED").contains(status)) {
             throw new RuntimeException("Invalid status");
+        }
+
+        // Validate status transition
+        String currentStatus = project.getStatus();
+        if (!isValidStatusTransition(currentStatus, status)) {
+            throw new RuntimeException("Invalid status transition from " + currentStatus + " to " + status);
         }
 
         project.setStatus(status);
         project = projectRepository.save(project);
 
         return mapToResponse(project);
+    }
+
+    private boolean isValidStatusTransition(String currentStatus, String newStatus) {
+        // DRAFT có thể chuyển sang IN_PROGRESS
+        if ("DRAFT".equals(currentStatus)) {
+            return "IN_PROGRESS".equals(newStatus);
+        }
+        // IN_PROGRESS có thể chuyển sang PAUSED hoặc COMPLETED
+        if ("IN_PROGRESS".equals(currentStatus)) {
+            return "PAUSED".equals(newStatus) || "COMPLETED".equals(newStatus);
+        }
+        // PAUSED có thể chuyển lại IN_PROGRESS (resume)
+        if ("PAUSED".equals(currentStatus)) {
+            return "IN_PROGRESS".equals(newStatus);
+        }
+        // COMPLETED không thể thay đổi
+        return false;
     }
 
     @Transactional
@@ -139,11 +175,17 @@ public class ProjectService {
             throw new RuntimeException("You don't have permission to update this project");
         }
 
+        // Chỉ cho phép update project ở trạng thái DRAFT, IN_PROGRESS, PAUSED
+        String currentStatus = project.getStatus();
+        if (!List.of("DRAFT", "IN_PROGRESS", "PAUSED").contains(currentStatus)) {
+            throw new RuntimeException("Cannot update project in " + currentStatus + " status. Only DRAFT, IN_PROGRESS, and PAUSED projects can be updated.");
+        }
+
         // Update các trường nếu có giá trị mới
         if (request.getName() != null && !request.getName().isBlank()) {
             // Kiểm tra tên project mới có bị trùng không (trừ chính nó)
-            if (!request.getName().equals(project.getName()) && 
-                projectRepository.existsByNameAndManagerUserId(request.getName(), manager.getUserId())) {
+            if (!request.getName().equals(project.getName()) &&
+                    projectRepository.existsByNameAndManagerUserId(request.getName(), manager.getUserId())) {
                 throw new RuntimeException("Project name already exists for this manager");
             }
             project.setName(request.getName());
@@ -159,8 +201,12 @@ public class ProjectService {
 
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             // Validate status
-            if (!List.of("ACTIVE", "INACTIVE", "COMPLETED").contains(request.getStatus())) {
+            if (!List.of("DRAFT", "IN_PROGRESS", "PAUSED", "COMPLETED").contains(request.getStatus())) {
                 throw new RuntimeException("Invalid status");
+            }
+            // Validate status transition
+            if (!isValidStatusTransition(currentStatus, request.getStatus())) {
+                throw new RuntimeException("Invalid status transition from " + currentStatus + " to " + request.getStatus());
             }
             project.setStatus(request.getStatus());
         }
