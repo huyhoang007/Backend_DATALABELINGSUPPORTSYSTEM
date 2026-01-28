@@ -37,7 +37,7 @@ public class PolicyController {
     }
     
     @GetMapping
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER','REVIEWER')")
     @Operation(
         summary = "Get all policies", 
         description = "Retrieve all policies with pagination (all authenticated users)"
@@ -49,7 +49,7 @@ public class PolicyController {
     }
     
     @GetMapping("/{policyId}")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER','REVIEWER')")
     @Operation(
         summary = "Get policy by ID", 
         description = "Retrieve a specific policy by its ID"
@@ -57,7 +57,7 @@ public class PolicyController {
     public ResponseEntity<PolicyResponse> getPolicyById(@PathVariable Long policyId) {
         return ResponseEntity.ok(policyService.getPolicyById(policyId));
     }
-    
+
     @GetMapping("/error-level/{errorLevel}")
     @PreAuthorize("hasAnyRole('MANAGER')")
     @Operation(
@@ -121,7 +121,7 @@ public class PolicyController {
     }
     
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER','REVIEWER')")
     @Operation(
         summary = "Get policies by project", 
         description = "Get all policies assigned to a specific project"

@@ -21,3 +21,4 @@ public interface PolicyRepository extends JpaRepository<Policy, Long> {
 
     Page<Policy> findAllByOrderByCreatedAtDesc(Pageable pageable);
 }
+

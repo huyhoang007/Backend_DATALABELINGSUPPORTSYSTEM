@@ -72,7 +72,6 @@ public class UserController {
             @RequestBody UpdateUserRequest request) {
         return ResponseEntity.ok(userService.updateUser(userId, request));
     }
-
     //CHỈ ADMIN - Ban user
     @PatchMapping("/{userId}/ban")
     @PreAuthorize("hasRole('ADMIN')")

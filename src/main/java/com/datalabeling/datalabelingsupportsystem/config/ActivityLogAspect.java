@@ -31,6 +31,7 @@ public class ActivityLogAspect {
             log.error("Failed to log CREATE activity", e);
         }
     }
+    
 
     @AfterReturning(pointcut = "execution(* com.datalabeling.datalabelingsupportsystem.service..*.*update*(..)) " +
             "&& !execution(* com.datalabeling.datalabelingsupportsystem.service.ActivityLog..*(..))", returning = "result")
