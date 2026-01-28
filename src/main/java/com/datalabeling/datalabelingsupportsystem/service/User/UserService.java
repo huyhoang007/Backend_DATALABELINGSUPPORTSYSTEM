@@ -204,7 +204,6 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // ✅ ĐỔI TÊN từ convertToResponse → mapToResponse
     private UserResponse mapToResponse(User user) {
         return UserResponse.builder()
                 .userId(user.getUserId())
@@ -215,5 +214,78 @@ public class UserService {
                 .roleName(user.getRole() != null ? user.getRole().getRoleName() : null)
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    // ===== ADMIN APPROVAL WORKFLOW =====
+
+    // Lấy danh sách users chờ duyệt (status = PENDING)
+    public Page<UserResponse> getPendingUsers(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return userRepository.findByStatus("PENDING", pageable)
+                .map(this::mapToResponse);
+    }
+
+    // Approve user: PENDING → ACTIVE
+    @Transactional
+    public UserResponse approveUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if ("ACTIVE".equals(user.getStatus())) {
+            throw new RuntimeException("User is already active");
+        }
+
+        user.setStatus("ACTIVE");
+        user.setUpdatedAt(LocalDateTime.now());
+
+        User updatedUser = userRepository.save(user);
+        return mapToResponse(updatedUser);
+    }
+
+    // Reject user: PENDING → REJECTED
+    @Transactional
+    public UserResponse rejectUser(Long userId, String reason) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setStatus("REJECTED");
+        user.setUpdatedAt(LocalDateTime.now());
+
+        User updatedUser = userRepository.save(user);
+        return mapToResponse(updatedUser);
+    }
+
+    // Suspend user: ACTIVE → SUSPENDED
+    @Transactional
+    public UserResponse suspendUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if ("SUSPENDED".equals(user.getStatus())) {
+            throw new RuntimeException("User is already suspended");
+        }
+
+        user.setStatus("SUSPENDED");
+        user.setUpdatedAt(LocalDateTime.now());
+
+        User updatedUser = userRepository.save(user);
+        return mapToResponse(updatedUser);
+    }
+
+    // Activate user: SUSPENDED/REJECTED → ACTIVE
+    @Transactional
+    public UserResponse activateUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if ("ACTIVE".equals(user.getStatus())) {
+            throw new RuntimeException("User is already active");
+        }
+
+        user.setStatus("ACTIVE");
+        user.setUpdatedAt(LocalDateTime.now());
+
+        User updatedUser = userRepository.save(user);
+        return mapToResponse(updatedUser);
     }
 }

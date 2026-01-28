@@ -72,28 +72,49 @@ public class UserController {
             @RequestBody UpdateUserRequest request) {
         return ResponseEntity.ok(userService.updateUser(userId, request));
     }
-    //CHỈ ADMIN - Ban user
-    @PatchMapping("/{userId}/ban")
+
+    //CHỈ ADMIN - Lấy danh sách users chờ duyệt
+    @GetMapping("/pending")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Ban user (ADMIN only)")
-    public ResponseEntity<UserResponse> banUser(@PathVariable Long userId) {
-        return ResponseEntity.ok(userService.banUser(userId));
+    @Operation(summary = "Get pending users waiting for approval (ADMIN only)")
+    public ResponseEntity<Page<UserResponse>> getPendingUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(userService.getPendingUsers(page, size));
     }
 
-    //CHỈ ADMIN - Unban user
-    @PatchMapping("/{userId}/unban")
+    //CHỈ ADMIN - Approve user (PENDING → ACTIVE)
+    @PatchMapping("/{userId}/approve")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Unban user (ADMIN only)")
-    public ResponseEntity<UserResponse> unbanUser(@PathVariable Long userId) {
-        return ResponseEntity.ok(userService.unbanUser(userId));
+    @Operation(summary = "Approve pending user (ADMIN only)", 
+               description = "Change user status from PENDING to ACTIVE, allowing them to login")
+    public ResponseEntity<UserResponse> approveUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.approveUser(userId));
     }
 
-    //CHỈ ADMIN - Xóa user
-    @DeleteMapping("/{userId}")
+    //CHỈ ADMIN - Reject user (PENDING → REJECTED)
+    @PatchMapping("/{userId}/reject")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Delete user (ADMIN only)")
-    public ResponseEntity<String> deleteUser(@PathVariable Long userId) {
-        userService.deleteUser(userId);
-        return ResponseEntity.ok("User deleted successfully");
+    @Operation(summary = "Reject pending user (ADMIN only)")
+    public ResponseEntity<UserResponse> rejectUser(
+            @PathVariable Long userId,
+            @RequestParam(required = false) String reason) {
+        return ResponseEntity.ok(userService.rejectUser(userId, reason));
+    }
+
+    //CHỈ ADMIN - Suspend user (ACTIVE → SUSPENDED)
+    @PatchMapping("/{userId}/suspend")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Suspend active user (ADMIN only)")
+    public ResponseEntity<UserResponse> suspendUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.suspendUser(userId));
+    }
+
+    //CHỈ ADMIN - Activate user (SUSPENDED/REJECTED → ACTIVE)
+    @PatchMapping("/{userId}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Activate suspended/rejected user (ADMIN only)")
+    public ResponseEntity<UserResponse> activateUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.activateUser(userId));
     }
 }
