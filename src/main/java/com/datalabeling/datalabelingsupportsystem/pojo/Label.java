@@ -34,6 +34,7 @@ public class Label {
     private String shortcutKey;
     
     @Column(nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     @OneToMany(mappedBy = "label", cascade = CascadeType.ALL, orphanRemoval = true)

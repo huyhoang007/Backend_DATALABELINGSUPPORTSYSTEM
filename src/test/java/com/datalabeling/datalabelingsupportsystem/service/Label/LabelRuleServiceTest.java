@@ -70,7 +70,7 @@ class LabelRuleServiceTest {
     @Test
     void testCreateRule_Success() {
         when(labelRuleRepository.save(any(LabelRule.class))).thenReturn(testRule);
-        when(labelRepository.findAllById(any())).thenReturn(Set.of(testLabel));
+        when(labelRepository.findAllById(any())).thenReturn(new java.util.ArrayList<>(Set.of(testLabel)));
         when(labelRuleLabelRepository.existsById(any())).thenReturn(false);
         when(labelRuleLabelRepository.save(any())).thenReturn(new LabelRuleLabel(testRule, testLabel));
 
@@ -117,7 +117,7 @@ class LabelRuleServiceTest {
     @Test
     void testAttachLabels_Success() {
         when(labelRuleRepository.findById(1L)).thenReturn(Optional.of(testRule));
-        when(labelRepository.findAllById(any())).thenReturn(Set.of(testLabel));
+        when(labelRepository.findAllById(any())).thenReturn(new java.util.ArrayList<>(Set.of(testLabel)));
         when(labelRuleLabelRepository.existsById(any())).thenReturn(false);
 
         labelRuleService.attachLabels(1L, Set.of(1L));
@@ -146,7 +146,7 @@ class LabelRuleServiceTest {
     void testReplaceLabels_Success() {
         when(labelRuleRepository.findById(1L)).thenReturn(Optional.of(testRule));
         when(labelRuleLabelRepository.findByIdRuleId(1L)).thenReturn(new java.util.ArrayList<>());
-        when(labelRepository.findAllById(any())).thenReturn(Set.of(testLabel));
+        when(labelRepository.findAllById(any())).thenReturn(new java.util.ArrayList<>(Set.of(testLabel)));
         when(labelRuleLabelRepository.existsById(any())).thenReturn(false);
 
         labelRuleService.replaceLabels(1L, Set.of(1L));

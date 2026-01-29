@@ -2,7 +2,6 @@ package com.datalabeling.datalabelingsupportsystem.controller.Label;
 
 import com.datalabeling.datalabelingsupportsystem.dto.request.Label.AttachLabelsRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.request.Label.CreateLabelRuleRequest;
-import com.datalabeling.datalabelingsupportsystem.dto.response.Label.LabelResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Label.LabelRuleResponse;
 import com.datalabeling.datalabelingsupportsystem.exception.ResourceNotFoundException;
 import com.datalabeling.datalabelingsupportsystem.service.Label.LabelRuleService;
@@ -16,7 +15,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.HashSet;
@@ -61,7 +59,6 @@ class LabelRuleControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testCreateRule_Success() throws Exception {
         when(labelRuleService.createRule(any())).thenReturn(ruleResponse);
 
@@ -76,7 +73,6 @@ class LabelRuleControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testGetRule_Success() throws Exception {
         when(labelRuleService.getById(1L)).thenReturn(ruleResponse);
 
@@ -90,7 +86,6 @@ class LabelRuleControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testGetRule_NotFound() throws Exception {
         when(labelRuleService.getById(1L)).thenThrow(new ResourceNotFoundException("LabelRule not found"));
 
@@ -102,7 +97,6 @@ class LabelRuleControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testDeleteRule_Success() throws Exception {
         doNothing().when(labelRuleService).deleteRule(1L);
 
@@ -114,7 +108,6 @@ class LabelRuleControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testAttachLabels_Success() throws Exception {
         AttachLabelsRequest request = new AttachLabelsRequest();
         request.setLabelIds(Set.of(1L));
@@ -130,7 +123,6 @@ class LabelRuleControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testDetachLabel_Success() throws Exception {
         doNothing().when(labelRuleService).detachLabel(1L, 1L);
 
@@ -142,7 +134,6 @@ class LabelRuleControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
     void testReplaceLabels_Success() throws Exception {
         AttachLabelsRequest request = new AttachLabelsRequest();
         request.setLabelIds(Set.of(1L, 2L));
