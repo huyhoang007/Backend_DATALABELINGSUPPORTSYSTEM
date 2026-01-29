@@ -3,6 +3,9 @@ package com.datalabeling.datalabelingsupportsystem.pojo;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "labels")
 @Getter
@@ -32,4 +35,8 @@ public class Label {
     
     @Column(nullable = false)
     private Boolean isActive = true;
+
+    @OneToMany(mappedBy = "label", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<LabelRuleLabel> labelLinks = new HashSet<>();
 }

@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "label_rules")
@@ -25,11 +26,28 @@ public class LabelRule {
     @Column(columnDefinition = "TEXT")
     private String ruleContent;
     
-    @ManyToMany
-    @JoinTable(
-        name = "labelrule_label",
-        joinColumns = @JoinColumn(name = "rule_id"),
-        inverseJoinColumns = @JoinColumn(name = "label_id")
-    )
-    private Set<Label> labels = new HashSet<>();
+    @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<LabelRuleLabel> labelLinks = new HashSet<>();
+
+    // Convenience accessors to preserve previous API
+    public Set<Label> getLabels() {
+        return labelLinks.stream()
+                .map(LabelRuleLabel::getLabel)
+                .collect(Collectors.toSet());
+    }
+
+    public void addLabel(Label label) {
+        LabelRuleLabel link = new LabelRuleLabel(this, label);
+        if (!labelLinks.contains(link)) {
+            labelLinks.add(link);
+            label.getLabelLinks().add(link);
+        }
+    }
+
+    public void removeLabel(Label label) {
+        LabelRuleLabelId id = new LabelRuleLabelId(this.ruleId, label.getLabelId());
+        labelLinks.removeIf(l -> l.getId().equals(id));
+        label.getLabelLinks().removeIf(l -> l.getId().equals(id));
+    }
 }
