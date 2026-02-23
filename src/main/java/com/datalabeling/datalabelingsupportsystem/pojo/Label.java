@@ -26,7 +26,7 @@ public class Label {
     private String colorCode;
     
     @Column(nullable = false)
-    private String labelType; // BOUNDING_BOX, POLYGON, etc.
+    private String labelType;
     
     private String description;
     
