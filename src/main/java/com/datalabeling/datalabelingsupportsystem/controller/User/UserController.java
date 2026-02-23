@@ -22,31 +22,29 @@ public class UserController {
 
     private final UserService userService;
 
-    //CHỈ ADMIN - Tạo user mới
+    // CHỈ ADMIN - Tạo user mới
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Create new user (ADMIN only)", 
-               description = "Admin creates user and assigns role")
+    @Operation(summary = "Create new user (ADMIN only)", description = "Admin creates user and assigns role")
     public ResponseEntity<UserResponse> createUser(@RequestBody CreateUserRequest request) {
         return ResponseEntity.ok(userService.createUser(request));
     }
 
-    //TẤT CẢ ROLE - Xem profile của chính mình
+    // TẤT CẢ ROLE - Xem profile của chính mình
     @GetMapping("/me")
-    @Operation(summary = "Get current user profile", 
-               description = "Works for all roles: ADMIN, MANAGER, ANNOTATOR, REVIEWER")
+    @Operation(summary = "Get current user profile", description = "Works for all roles: ADMIN, MANAGER, ANNOTATOR, REVIEWER")
     public ResponseEntity<UserResponse> getCurrentUser() {
         return ResponseEntity.ok(userService.getCurrentUser());
     }
 
-    //TẤT CẢ ROLE - Update profile của chính mình
+    // TẤT CẢ ROLE - Update profile của chính mình
     @PutMapping("/me")
     @Operation(summary = "Update current user profile")
     public ResponseEntity<UserResponse> updateCurrentUser(@RequestBody UpdateUserRequest request) {
         return ResponseEntity.ok(userService.updateCurrentUser(request));
     }
 
-    //CHỈ ADMIN - Xem tất cả users
+    // CHỈ ADMIN - Xem tất cả users
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get all users (ADMIN only)")
@@ -56,7 +54,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers(page, size));
     }
 
-    //CHỈ ADMIN - Xem user cụ thể
+    // CHỈ ADMIN - Xem user cụ thể
     @GetMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get user by ID (ADMIN only)")
@@ -64,7 +62,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserById(userId));
     }
 
-    //ADMIN hoặc chính user đó - Update user
+    // ADMIN hoặc chính user đó - Update user
     @PutMapping("/{userId}")
     @Operation(summary = "Update user (ADMIN or self)")
     public ResponseEntity<UserResponse> updateUser(
@@ -73,7 +71,7 @@ public class UserController {
         return ResponseEntity.ok(userService.updateUser(userId, request));
     }
 
-    //CHỈ ADMIN - Lấy danh sách users chờ duyệt
+    // CHỈ ADMIN - Lấy danh sách users chờ duyệt
     @GetMapping("/pending")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get pending users waiting for approval (ADMIN only)")
@@ -83,16 +81,15 @@ public class UserController {
         return ResponseEntity.ok(userService.getPendingUsers(page, size));
     }
 
-    //CHỈ ADMIN - Approve user (PENDING → ACTIVE)
+    // CHỈ ADMIN - Approve user (PENDING → ACTIVE)
     @PatchMapping("/{userId}/approve")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Approve pending user (ADMIN only)", 
-               description = "Change user status from PENDING to ACTIVE, allowing them to login")
+    @Operation(summary = "Approve pending user (ADMIN only)", description = "Change user status from PENDING to ACTIVE, allowing them to login")
     public ResponseEntity<UserResponse> approveUser(@PathVariable Long userId) {
         return ResponseEntity.ok(userService.approveUser(userId));
     }
 
-    //CHỈ ADMIN - Reject user (PENDING → REJECTED)
+    // CHỈ ADMIN - Reject user (PENDING → REJECTED)
     @PatchMapping("/{userId}/reject")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Reject pending user (ADMIN only)")
@@ -102,7 +99,7 @@ public class UserController {
         return ResponseEntity.ok(userService.rejectUser(userId, reason));
     }
 
-    //CHỈ ADMIN - Suspend user (ACTIVE → SUSPENDED)
+    // CHỈ ADMIN - Suspend user (ACTIVE → SUSPENDED)
     @PatchMapping("/{userId}/suspend")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Suspend active user (ADMIN only)")
@@ -110,7 +107,7 @@ public class UserController {
         return ResponseEntity.ok(userService.suspendUser(userId));
     }
 
-    //CHỈ ADMIN - Activate user (SUSPENDED/REJECTED → ACTIVE)
+    // CHỈ ADMIN - Activate user (SUSPENDED/REJECTED → ACTIVE)
     @PatchMapping("/{userId}/activate")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Activate suspended/rejected user (ADMIN only)")

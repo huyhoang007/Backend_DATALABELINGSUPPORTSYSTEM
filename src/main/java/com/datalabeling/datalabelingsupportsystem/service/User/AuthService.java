@@ -29,7 +29,7 @@ public class AuthService {
         if (userRepository.existsByUsername((request.getUsername()))) {
             throw new RuntimeException("Username already exists");
         }
-        
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
@@ -94,7 +94,6 @@ public class AuthService {
                 token,
                 "Bearer",
                 user.getUsername(),
-                user.getRole().getRoleName()
-        );
+                user.getRole().getRoleName());
     }
 }
