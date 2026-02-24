@@ -1,6 +1,7 @@
 package com.datalabeling.datalabelingsupportsystem.dto.request.Label;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 
 import java.util.Set;
@@ -12,5 +13,6 @@ public class CreateLabelRuleRequest {
 
     private String ruleContent;
 
+    @NotEmpty(message = "At least one label must be provided")
     private Set<Long> labelIds;
 }
