@@ -2,8 +2,13 @@ package com.datalabeling.datalabelingsupportsystem.pojo;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -12,8 +17,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
-    
+public class User implements UserDetails {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
@@ -32,7 +37,7 @@ public class User {
     private String fullName;
 
     @Column(nullable = false, length = 20)
-    private String status; // "ACTIVE", "BANNED"
+    private String status;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
@@ -42,7 +47,7 @@ public class User {
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt; 
+    private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
@@ -54,5 +59,39 @@ public class User {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-}
 
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.getRoleName()));
+    }
+
+    @Override
+    public String getPassword() {
+        return password;
+    }
+
+    @Override
+    public String getUsername() {
+        return username;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return "ACTIVE".equalsIgnoreCase(status);
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return "ACTIVE".equalsIgnoreCase(status);
+    }
+}
