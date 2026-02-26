@@ -1,11 +1,13 @@
-server:
-  port: 8080
+app:
+  allow-register-roles: true
 
 spring:
+  application:
+    name: DataLabelingSupportSystem
   datasource:
     url: jdbc:postgresql://localhost:5432/DataLabeling
     username: postgres
-    password: thubinh
+    password: postgres
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -28,16 +30,27 @@ spring:
     resources:
       static-locations: classpath:/static/,file:uploads/
 
+jwt:
+  secret: ibelievewecandoitmyguysneverstopgoingweneedtogoforeverlifeisanunstoppablejourneyofobstaclesinwhichwecannotavoid
+  expiration: 86400000
+
+server:
+  port: 8080
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  upload:
+    path: uploads
+
 logging:
   level:
     com.datalabeling.datalabelingsupportsystem: DEBUG
     org.springframework.aop: DEBUG
     org.aspectj: DEBUG
-
-jwt:
-  secret: ibelievewecandoitmyguysneverstopgoingweneedtogoforeverlifeisanunstoppablejourneyofobstaclesinwhichwecannotavoid
-  expiration: 86400000
-
-app:
-  upload:
-    path: uploads
+    com.datalabeling.datalabelingsupportsystem.service.User.AuthService: INFO
+    com.datalabeling.datalabelingsupportsystem.controller.User.AuthController: INFO

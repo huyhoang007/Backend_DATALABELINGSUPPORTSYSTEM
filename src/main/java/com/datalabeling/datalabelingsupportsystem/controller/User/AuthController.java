@@ -8,11 +8,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -42,6 +46,28 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    // Local exception handlers for auth endpoints
+    @ExceptionHandler(AuthService.ValidationException.class)
+    public ResponseEntity<?> handleValidationException(AuthService.ValidationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST) // 400
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(AuthService.DuplicateResourceException.class)
+    public ResponseEntity<?> handleDuplicateException(AuthService.DuplicateResourceException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT) // 409
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(AuthService.AuthenticationException.class)
+    public ResponseEntity<?> handleAuthenticationException(AuthService.AuthenticationException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED) // 401
+                .body(Map.of("error", ex.getMessage()));
     }
 }
 
