@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/datalabeling_db
+    url: jdbc:postgresql://localhost:5432/DataLabeling
     username: postgres
-    password: 12345
+    password: thubinh
     driver-class-name: org.postgresql.Driver
 
   jpa:

@@ -30,7 +30,7 @@ public class Label {
     
     private String description;
     
-    @Column(length = 1)
+    @Column(length = 20)
     private String shortcutKey;
     
     @Column(nullable = false)

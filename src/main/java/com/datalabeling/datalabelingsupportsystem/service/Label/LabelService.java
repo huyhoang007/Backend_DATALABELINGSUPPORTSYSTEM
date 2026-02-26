@@ -26,7 +26,7 @@ public class LabelService {
 
         // Validate unique shortcut key
         if (request.getShortcutKey() != null &&
-                labelRepository.existsByShortcutKey(request.getShortcutKey())) {
+                labelRepository.existsByShortcutKey((request.getShortcutKey()))) {
             throw new RuntimeException("Shortcut key already in use");
         }
 
