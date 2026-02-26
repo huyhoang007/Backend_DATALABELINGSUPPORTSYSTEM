@@ -22,7 +22,7 @@ public class AssignmentResponse {
     private Long reviewerId;
     private String reviewerName;
     private AssignmentStatus status;
-    private Double progress;
+    private Integer progress;
     private LocalDateTime completedAt;
     private LocalDateTime createdAt;
 }

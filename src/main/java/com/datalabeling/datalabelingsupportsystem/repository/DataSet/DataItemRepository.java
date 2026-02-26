@@ -11,4 +11,7 @@ public interface DataItemRepository extends JpaRepository<DataItem, Long> {
     List<DataItem> findByDataset_DatasetIdAndIsActiveTrue(Long datasetId);
 
     long countByDataset_DatasetIdAndIsActiveTrue(Long datasetId);
+
+    List<DataItem> findByDataset_DatasetId(Long datasetDatasetId);
+
 }

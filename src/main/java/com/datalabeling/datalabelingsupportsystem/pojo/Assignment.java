@@ -3,14 +3,11 @@ package com.datalabeling.datalabelingsupportsystem.pojo;
 import com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "assignments")
-@Getter @Setter @Builder
-@NoArgsConstructor @AllArgsConstructor
+@Table(name = "Assignments")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Assignment {
 
     @Id
@@ -31,20 +28,17 @@ public class Assignment {
     private User annotator;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewer_id", nullable = false)
+    @JoinColumn(name = "reviewer_id")
     private User reviewer;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status")
     private AssignmentStatus status;
-
-    @Column(name = "progress")
-    private Double progress;
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "progress")
+    private Integer progress; // 0-100
     private LocalDateTime createdAt;
 }

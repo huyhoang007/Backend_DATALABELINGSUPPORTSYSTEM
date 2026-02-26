@@ -77,7 +77,7 @@ public class AssignmentService {
                 .annotator(annotator)
                 .reviewer(reviewer)
                 .status(AssignmentStatus.PENDING)
-                .progress(0.0)
+                .progress(0)
                 .build();
 
         Assignment saved = assignmentRepository.save(assignment);
