@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -41,6 +42,12 @@ public class LabelRuleService {
         }
 
         return mapToResponse(saved);
+    }
+
+    public List<LabelRuleResponse> getAllRules() {
+        return labelRuleRepository.findAll().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     public LabelRuleResponse getById(Long id) {
