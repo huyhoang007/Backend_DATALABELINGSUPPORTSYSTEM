@@ -22,6 +22,13 @@ public class LabelRuleController {
 
     private final LabelRuleService labelRuleService;
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('MANAGER')")
+    @Operation(summary = "Get all label rules")
+    public ResponseEntity<java.util.List<LabelRuleResponse>> getAllRules() {
+        return ResponseEntity.ok(labelRuleService.getAllRules());
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('MANAGER')")
     @Operation(summary = "Create label rule")
