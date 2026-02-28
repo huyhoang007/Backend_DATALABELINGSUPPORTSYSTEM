@@ -1,7 +1,6 @@
 package com.datalabeling.datalabelingsupportsystem.controller.Labeling;
 
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.BatchSaveAnnotationRequest;
-import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.UpdateAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.ReviewAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.AnnotationResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.AnnotatorAssignmentResponse;
@@ -68,29 +67,19 @@ public class AnnotationController {
     }
 
     /**
-     * Cập nhật annotation
+     * Sửa lại annotations sau khi reviewer reject
+     * Chỉ dùng khi assignment đang REJECTED
+     * Đánh dấu isImproved=true để reviewer biết đã được sửa
      */
-    @PutMapping("/annotations/{reviewingId}")
+    @PutMapping("/assignments/{assignmentId}/annotations/fix")
     @PreAuthorize("hasRole('ANNOTATOR')")
-    public ResponseEntity<AnnotationResponse> updateAnnotation(
-            @PathVariable Long reviewingId,
-            @RequestBody UpdateAnnotationRequest request,
+    public ResponseEntity<List<AnnotationResponse>> fixRejectedAnnotations(
+            @PathVariable Long assignmentId,
+            @Valid @RequestBody BatchSaveAnnotationRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         Long annotatorId = ((User) userDetails).getUserId();
-        return ResponseEntity.ok(annotationService.updateAnnotation(reviewingId, request, annotatorId));
-    }
-
-    /**
-     * Xóa annotation
-     */
-    @DeleteMapping("/annotations/{reviewingId}")
-    @PreAuthorize("hasRole('ANNOTATOR')")
-    public ResponseEntity<Void> deleteAnnotation(
-            @PathVariable Long reviewingId,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        Long annotatorId = ((User) userDetails).getUserId();
-        annotationService.deleteAnnotation(reviewingId, annotatorId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(
+                annotationService.fixRejectedAnnotations(assignmentId, request, annotatorId));
     }
 
     /**

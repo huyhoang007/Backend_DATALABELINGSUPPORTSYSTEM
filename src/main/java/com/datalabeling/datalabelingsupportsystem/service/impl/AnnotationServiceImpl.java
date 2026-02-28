@@ -1,7 +1,6 @@
 package com.datalabeling.datalabelingsupportsystem.service.impl;
 
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.BatchSaveAnnotationRequest;
-import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.UpdateAnnotationRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.datalabeling.datalabelingsupportsystem.dto.response.DataItem.DataItemResponse;
@@ -142,7 +141,7 @@ public class AnnotationServiceImpl implements AnnotationService {
         }
 
         // 3. LƯU ANNOTATIONS CHO 1 ITEM (1 hoặc nhiều label)
-        // Luôn replace toàn bộ annotations cũ của item đó
+        // Dùng trong lúc gán nhãn bình thường: dán nhãn, sửa, xóa rồi dán lại
         @Override
         @Transactional
         public List<AnnotationResponse> saveAnnotations(Long assignmentId,
@@ -153,112 +152,76 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Assignment not found or access denied"));
 
-                checkCanEdit(assignment);
+                // Chỉ cho phép khi đang gán nhãn (IN_PROGRESS)
+                if (assignment.getStatus() != AssignmentStatus.IN_PROGRESS
+                                && assignment.getStatus() != AssignmentStatus.PENDING) {
+                        throw new ValidationException(
+                                        "Can only edit annotations when assignment is IN_PROGRESS. " +
+                                        "If assignment is REJECTED, use the fix-rejected endpoint.");
+                }
+
+                if (assignment.getStatus() == AssignmentStatus.PENDING) {
+                        assignment.setStatus(AssignmentStatus.IN_PROGRESS);
+                }
 
                 DataItem item = dataItemRepository.findById(request.getItemId())
                                 .orElseThrow(() -> new ResourceNotFoundException("DataItem not found"));
 
-                // Xóa hết annotations cũ của item này trong assignment
-                List<Reviewing> oldReviews = reviewingRepository
-                                .findByAssignment_AssignmentIdAndDataItem_ItemId(
-                                                assignmentId, item.getItemId());
-                reviewingRepository.deleteAll(oldReviews);
+                // Xóa hết annotations cũ của item này
+                reviewingRepository.deleteAll(
+                                reviewingRepository.findByAssignment_AssignmentIdAndDataItem_ItemId(
+                                                assignmentId, item.getItemId()));
 
-                // REJECTED → IN_PROGRESS khi bắt đầu sửa lại
-                if (assignment.getStatus() == AssignmentStatus.REJECTED) {
-                        assignment.setStatus(AssignmentStatus.IN_PROGRESS);
-                }
-
-                // Lưu annotations mới (1 hoặc nhiều)
-                List<Reviewing> newReviews = request.getAnnotations().stream()
-                                .map(ann -> {
-                                        Label label = labelRepository.findById(ann.getLabelId())
-                                                        .orElseThrow(() -> new ResourceNotFoundException(
-                                                                        "Label not found: " + ann.getLabelId()));
-                                        return Reviewing.builder()
-                                                        .assignment(assignment)
-                                                        .annotator(assignment.getAnnotator())
-                                                        .dataItem(item)
-                                                        .label(label)
-                                                        .geometry(convertGeometry(ann.getGeometry()))
-                                                        .status(ReviewingStatus.PENDING)
-                                                        .isImproved(false)
-                                                        .build();
-                                })
-                                .collect(Collectors.toList());
-
+                // Lưu annotations mới (isImproved = false vì đây là gán nhãn mới)
+                List<Reviewing> newReviews = buildReviews(request, assignment, item, false);
                 newReviews = reviewingRepository.saveAll(newReviews);
                 updateProgress(assignment);
 
                 return newReviews.stream().map(this::toAnnotationResponse).collect(Collectors.toList());
         }
 
-        // 4. CẬP NHẬT ANNOTATION
+        // 3b. SỬA LẠI ANNOTATIONS SAU KHI REVIEWER REJECT
+        // Chỉ hoạt động khi assignment đang ở trạng thái REJECTED
+        // Đánh dấu isImproved = true để reviewer biết đã được sửa
         @Override
         @Transactional
-        public AnnotationResponse updateAnnotation(Long reviewingId,
-                        UpdateAnnotationRequest request, Long annotatorId) {
+        public List<AnnotationResponse> fixRejectedAnnotations(Long assignmentId,
+                        BatchSaveAnnotationRequest request, Long annotatorId) {
 
-                Reviewing reviewing = reviewingRepository.findById(reviewingId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Annotation not found"));
+                Assignment assignment = assignmentRepository
+                                .findByAssignmentIdAndAnnotator_UserId(assignmentId, annotatorId)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Assignment not found or access denied"));
 
-                // Kiểm tra quyền sở hữu
-                if (!reviewing.getAnnotator().getUserId().equals(annotatorId)) {
-                        throw new ValidationException("Access denied");
+                // Chỉ cho phép khi assignment bị REJECTED
+                if (assignment.getStatus() != AssignmentStatus.REJECTED) {
+                        throw new ValidationException(
+                                        "This endpoint is only for fixing rejected assignments. " +
+                                        "Current status: " + assignment.getStatus());
                 }
 
-                // Kiểm tra trạng thái assignment có cho phép sửa không
-                checkCanEdit(reviewing.getAssignment());
+                DataItem item = dataItemRepository.findById(request.getItemId())
+                                .orElseThrow(() -> new ResourceNotFoundException("DataItem not found"));
 
-                // REJECTED → IN_PROGRESS khi bắt đầu sửa lại
-                if (reviewing.getAssignment().getStatus() == AssignmentStatus.REJECTED) {
-                        reviewing.getAssignment().setStatus(AssignmentStatus.IN_PROGRESS);
-                        assignmentRepository.save(reviewing.getAssignment());
-                }
+                // Xóa hết annotations cũ của item này (cả REJECTED lẫn APPROVED của item đó)
+                reviewingRepository.deleteAll(
+                                reviewingRepository.findByAssignment_AssignmentIdAndDataItem_ItemId(
+                                                assignmentId, item.getItemId()));
 
-                // Cập nhật từng field nếu có giá trị mới
-                if (request.getLabelId() != null) {
-                        Label label = labelRepository.findById(request.getLabelId())
-                                        .orElseThrow(() -> new ResourceNotFoundException("Label not found"));
-                        reviewing.setLabel(label);
-                }
-                if (request.getGeometry() != null) {
-                        reviewing.setGeometry(convertGeometry(request.getGeometry()));
-                }
+                // Lưu annotations mới với isImproved = true
+                List<Reviewing> newReviews = buildReviews(request, assignment, item, true);
+                newReviews = reviewingRepository.saveAll(newReviews);
 
-                // Đánh dấu là đã được cải thiện nếu trước đó bị REJECTED
-                if (reviewing.getStatus() == ReviewingStatus.REJECTED) {
-                        reviewing.setStatus(ReviewingStatus.PENDING);
-                        reviewing.setIsImproved(true);
-                }
+                // Chuyển assignment → IN_PROGRESS để annotator có thể tiếp tục sửa các item khác
+                assignment.setStatus(AssignmentStatus.IN_PROGRESS);
+                assignmentRepository.save(assignment);
 
-                reviewing = reviewingRepository.save(reviewing);
-                return toAnnotationResponse(reviewing);
-        }
-
-        // 5. XÓA ANNOTATION
-        @Override
-        @Transactional
-        public void deleteAnnotation(Long reviewingId, Long annotatorId) {
-                Reviewing reviewing = reviewingRepository.findById(reviewingId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Annotation not found"));
-
-                // Kiểm tra quyền sở hữu
-                if (!reviewing.getAnnotator().getUserId().equals(annotatorId)) {
-                        throw new ValidationException("Access denied");
-                }
-
-                // Kiểm tra trạng thái assignment có cho phép xóa không
-                checkCanEdit(reviewing.getAssignment());
-
-                Assignment assignment = reviewing.getAssignment();
-                reviewingRepository.delete(reviewing);
-
-                // Cập nhật progress sau khi xóa annotation
                 updateProgress(assignment);
+
+                return newReviews.stream().map(this::toAnnotationResponse).collect(Collectors.toList());
         }
 
-        // 6. LẤY ANNOTATIONS THEO ITEM
+        // 4. LẤY ANNOTATIONS THEO ITEM
         @Override
         public List<AnnotationResponse> getAnnotationsByItem(Long assignmentId,
                         Long itemId, Long annotatorId) {
@@ -312,8 +275,8 @@ public class AnnotationServiceImpl implements AnnotationService {
 
         /**
          * Kiểm tra assignment có cho phép chỉnh sửa annotation không
-         * PENDING, IN_PROGRESS, REJECTED → được phép
-         * SUBMITTED, APPROVED → không được phép
+         * PENDING, IN_PROGRESS → được phép
+         * SUBMITTED, APPROVED, REJECTED → không được phép qua endpoint này
          */
         private void checkCanEdit(Assignment assignment) {
                 if (assignment.getStatus() == AssignmentStatus.SUBMITTED) {
@@ -324,6 +287,31 @@ public class AnnotationServiceImpl implements AnnotationService {
                         throw new ValidationException(
                                         "Cannot edit: assignment is already approved");
                 }
+        }
+
+        /**
+         * Tạo list Reviewing từ request
+         * isImproved = false: gán nhãn mới bình thường
+         * isImproved = true: sửa lại sau khi bị reviewer reject
+         */
+        private List<Reviewing> buildReviews(BatchSaveAnnotationRequest request,
+                        Assignment assignment, DataItem item, boolean isImproved) {
+                return request.getAnnotations().stream()
+                                .map(ann -> {
+                                        Label label = labelRepository.findById(ann.getLabelId())
+                                                        .orElseThrow(() -> new ResourceNotFoundException(
+                                                                        "Label not found: " + ann.getLabelId()));
+                                        return Reviewing.builder()
+                                                        .assignment(assignment)
+                                                        .annotator(assignment.getAnnotator())
+                                                        .dataItem(item)
+                                                        .label(label)
+                                                        .geometry(convertGeometry(ann.getGeometry()))
+                                                        .status(ReviewingStatus.PENDING)
+                                                        .isImproved(isImproved)
+                                                        .build();
+                                })
+                                .collect(Collectors.toList());
         }
 
         /**
