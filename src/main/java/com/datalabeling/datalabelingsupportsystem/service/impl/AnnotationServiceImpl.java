@@ -1,7 +1,9 @@
 package com.datalabeling.datalabelingsupportsystem.service.impl;
 
-import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.SaveAnnotationRequest;
+import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.BatchSaveAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.UpdateAnnotationRequest;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.datalabeling.datalabelingsupportsystem.dto.response.DataItem.DataItemResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Label.LabelGroupResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Label.LabelResponse;
@@ -36,6 +38,7 @@ public class AnnotationServiceImpl implements AnnotationService {
         private final DataItemRepository dataItemRepository;
         private final LabelRepository labelRepository;
         private final LabelRuleRepository labelRuleRepository;
+        private final ObjectMapper objectMapper;
 
         // 1. LẤY DANH SÁCH TASK CỦA ANNOTATOR
         @Override
@@ -138,48 +141,56 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 .build();
         }
 
-        // 3. LƯU ANNOTATION MỚI
+        // 3. LƯU ANNOTATIONS CHO 1 ITEM (1 hoặc nhiều label)
+        // Luôn replace toàn bộ annotations cũ của item đó
         @Override
         @Transactional
-        public AnnotationResponse saveAnnotation(Long assignmentId,
-                        SaveAnnotationRequest request, Long annotatorId) {
+        public List<AnnotationResponse> saveAnnotations(Long assignmentId,
+                        BatchSaveAnnotationRequest request, Long annotatorId) {
 
                 Assignment assignment = assignmentRepository
                                 .findByAssignmentIdAndAnnotator_UserId(assignmentId, annotatorId)
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Assignment not found or access denied"));
 
-                // Kiểm tra có được phép chỉnh sửa không
                 checkCanEdit(assignment);
-
-                // REJECTED → IN_PROGRESS khi bắt đầu sửa lại
-                if (assignment.getStatus() == AssignmentStatus.REJECTED) {
-                        assignment.setStatus(AssignmentStatus.IN_PROGRESS);
-                        assignmentRepository.save(assignment);
-                }
 
                 DataItem item = dataItemRepository.findById(request.getItemId())
                                 .orElseThrow(() -> new ResourceNotFoundException("DataItem not found"));
 
-                Label label = labelRepository.findById(request.getLabelId())
-                                .orElseThrow(() -> new ResourceNotFoundException("Label not found"));
+                // Xóa hết annotations cũ của item này trong assignment
+                List<Reviewing> oldReviews = reviewingRepository
+                                .findByAssignment_AssignmentIdAndDataItem_ItemId(
+                                                assignmentId, item.getItemId());
+                reviewingRepository.deleteAll(oldReviews);
 
-                Reviewing reviewing = Reviewing.builder()
-                                .assignment(assignment)
-                                .annotator(assignment.getAnnotator())
-                                .dataItem(item)
-                                .label(label)
-                                .geometry(request.getGeometry())
-                                .status(ReviewingStatus.PENDING)
-                                .isImproved(false)
-                                .build();
+                // REJECTED → IN_PROGRESS khi bắt đầu sửa lại
+                if (assignment.getStatus() == AssignmentStatus.REJECTED) {
+                        assignment.setStatus(AssignmentStatus.IN_PROGRESS);
+                }
 
-                reviewing = reviewingRepository.save(reviewing);
+                // Lưu annotations mới (1 hoặc nhiều)
+                List<Reviewing> newReviews = request.getAnnotations().stream()
+                                .map(ann -> {
+                                        Label label = labelRepository.findById(ann.getLabelId())
+                                                        .orElseThrow(() -> new ResourceNotFoundException(
+                                                                        "Label not found: " + ann.getLabelId()));
+                                        return Reviewing.builder()
+                                                        .assignment(assignment)
+                                                        .annotator(assignment.getAnnotator())
+                                                        .dataItem(item)
+                                                        .label(label)
+                                                        .geometry(convertGeometry(ann.getGeometry()))
+                                                        .status(ReviewingStatus.PENDING)
+                                                        .isImproved(false)
+                                                        .build();
+                                })
+                                .collect(Collectors.toList());
 
-                // Cập nhật progress sau khi thêm annotation
+                newReviews = reviewingRepository.saveAll(newReviews);
                 updateProgress(assignment);
 
-                return toAnnotationResponse(reviewing);
+                return newReviews.stream().map(this::toAnnotationResponse).collect(Collectors.toList());
         }
 
         // 4. CẬP NHẬT ANNOTATION
@@ -212,7 +223,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                         reviewing.setLabel(label);
                 }
                 if (request.getGeometry() != null) {
-                        reviewing.setGeometry(request.getGeometry());
+                        reviewing.setGeometry(convertGeometry(request.getGeometry()));
                 }
 
                 // Đánh dấu là đã được cải thiện nếu trước đó bị REJECTED
@@ -330,6 +341,18 @@ public class AnnotationServiceImpl implements AnnotationService {
                 int progress = (int) ((annotatedItems * 100) / totalItems);
                 assignment.setProgress(progress);
                 assignmentRepository.save(assignment);
+        }
+
+        /**
+         * Convert JsonNode (object từ frontend) hoặc null → String để lưu DB
+         */
+        private String convertGeometry(JsonNode geometry) {
+                if (geometry == null || geometry.isNull()) return null;
+                try {
+                        return objectMapper.writeValueAsString(geometry);
+                } catch (Exception e) {
+                        return geometry.toString();
+                }
         }
 
         private AnnotationResponse toAnnotationResponse(Reviewing r) {

@@ -1,6 +1,6 @@
 package com.datalabeling.datalabelingsupportsystem.service.Labeling;
 
-import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.SaveAnnotationRequest;
+import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.BatchSaveAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.UpdateAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.AnnotationResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.AnnotatorAssignmentResponse;
@@ -16,10 +16,11 @@ public interface AnnotationService {
     // Mở workspace gán nhãn
     AnnotationWorkspaceResponse openWorkspace(Long assignmentId, Long annotatorId);
 
-    // Lưu 1 annotation
-    AnnotationResponse saveAnnotation(Long assignmentId, SaveAnnotationRequest request, Long annotatorId);
+    // Lưu annotations cho 1 item (1 hoặc nhiều label đều được)
+    // Luôn replace toàn bộ annotations cũ của item đó
+    List<AnnotationResponse> saveAnnotations(Long assignmentId, BatchSaveAnnotationRequest request, Long annotatorId);
 
-    // Cập nhật annotation
+    // Cập nhật 1 annotation cụ thể (sửa geometry hoặc label)
     AnnotationResponse updateAnnotation(Long reviewingId, UpdateAnnotationRequest request, Long annotatorId);
 
     // Xóa annotation

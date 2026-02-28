@@ -1,6 +1,6 @@
 package com.datalabeling.datalabelingsupportsystem.controller.Labeling;
 
-import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.SaveAnnotationRequest;
+import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.BatchSaveAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.UpdateAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.ReviewAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.AnnotationResponse;
@@ -52,17 +52,19 @@ public class AnnotationController {
     }
 
     /**
-     * Lưu annotation mới
+     * Lưu annotations cho 1 ảnh — hỗ trợ cả 1 label lẫn nhiều label.
+     * Mỗi lần gọi sẽ REPLACE toàn bộ annotations cũ của item đó.
+     * Frontend chỉ cần gọi 1 endpoint này khi user hoàn thành gán nhãn xong 1 ảnh.
      */
     @PostMapping("/assignments/{assignmentId}/annotations")
     @PreAuthorize("hasRole('ANNOTATOR')")
-    public ResponseEntity<AnnotationResponse> saveAnnotation(
+    public ResponseEntity<List<AnnotationResponse>> saveAnnotations(
             @PathVariable Long assignmentId,
-            @Valid @RequestBody SaveAnnotationRequest request,
+            @Valid @RequestBody BatchSaveAnnotationRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         Long annotatorId = ((User) userDetails).getUserId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(annotationService.saveAnnotation(assignmentId, request, annotatorId));
+                .body(annotationService.saveAnnotations(assignmentId, request, annotatorId));
     }
 
     /**
