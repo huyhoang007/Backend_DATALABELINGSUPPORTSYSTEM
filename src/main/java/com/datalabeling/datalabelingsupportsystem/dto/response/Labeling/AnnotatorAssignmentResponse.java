@@ -14,5 +14,6 @@ public class AnnotatorAssignmentResponse {
     private String status;
     private Integer progress;
     private LocalDateTime completedAt;
+    private String annotatorName;
     private String reviewerName;
 }

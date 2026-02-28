@@ -8,6 +8,7 @@ import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.Annotato
 import com.datalabeling.datalabelingsupportsystem.dto.response.WorkSpace.AnnotationWorkspaceResponse;
 import com.datalabeling.datalabelingsupportsystem.pojo.User;
 import com.datalabeling.datalabelingsupportsystem.service.Labeling.AnnotationService;
+import com.datalabeling.datalabelingsupportsystem.service.Labeling.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ import java.util.List;
 public class AnnotationController {
 
     private final AnnotationService annotationService;
+    private final ReviewService reviewService;
 
     /**
      * Annotator xem danh sách task được giao
@@ -125,6 +127,56 @@ public class AnnotationController {
             @Valid @RequestBody ReviewAnnotationRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         Long reviewerId = ((User) userDetails).getUserId();
-        return ResponseEntity.ok(annotationService.reviewAnnotation(reviewingId, request, reviewerId));
+        return ResponseEntity.ok(reviewService.reviewAnnotation(reviewingId, request, reviewerId));
+    }
+
+    // ============== REVIEWER ENDPOINTS ==============
+
+    /**
+     * Reviewer xem danh sách assignments được giao duyệt
+     */
+    @GetMapping("/my-review-assignments")
+    @PreAuthorize("hasRole('REVIEWER')")
+    public ResponseEntity<List<AnnotatorAssignmentResponse>> getMyReviewAssignments(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long reviewerId = ((User) userDetails).getUserId();
+        return ResponseEntity.ok(reviewService.getMyReviewAssignments(reviewerId));
+    }
+
+    /**
+     * Reviewer mở workspace duyệt assignment
+     */
+    @GetMapping("/assignments/{assignmentId}/review-workspace")
+    @PreAuthorize("hasRole('REVIEWER')")
+    public ResponseEntity<AnnotationWorkspaceResponse> openReviewWorkspace(
+            @PathVariable Long assignmentId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long reviewerId = ((User) userDetails).getUserId();
+        return ResponseEntity.ok(reviewService.openReviewWorkspace(assignmentId, reviewerId));
+    }
+
+    /**
+     * Reviewer xem danh sách annotations của assignment
+     */
+    @GetMapping("/assignments/{assignmentId}/review-annotations")
+    @PreAuthorize("hasRole('REVIEWER')")
+    public ResponseEntity<List<AnnotationResponse>> getReviewAssignmentAnnotations(
+            @PathVariable Long assignmentId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long reviewerId = ((User) userDetails).getUserId();
+        return ResponseEntity.ok(reviewService.getReviewAssignmentAnnotations(assignmentId, reviewerId));
+    }
+
+    /**
+     * Reviewer xem danh sách annotations theo item
+     */
+    @GetMapping("/assignments/{assignmentId}/items/{itemId}/review-annotations")
+    @PreAuthorize("hasRole('REVIEWER')")
+    public ResponseEntity<List<AnnotationResponse>> getReviewAnnotationsByItem(
+            @PathVariable Long assignmentId,
+            @PathVariable Long itemId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long reviewerId = ((User) userDetails).getUserId();
+        return ResponseEntity.ok(reviewService.getReviewAnnotationsByItem(assignmentId, itemId, reviewerId));
     }
 }
