@@ -2,6 +2,7 @@ package com.datalabeling.datalabelingsupportsystem.controller.Labeling;
 
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.SaveAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.UpdateAnnotationRequest;
+import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.ReviewAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.AnnotationResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.AnnotatorAssignmentResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.WorkSpace.AnnotationWorkspaceResponse;
@@ -112,5 +113,18 @@ public class AnnotationController {
         Long annotatorId = ((User) userDetails).getUserId();
         annotationService.submitAssignment(assignmentId, annotatorId);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Reviewer đánh giá annotation cụ thể
+     */
+    @PostMapping("/annotations/{reviewingId}/review")
+    @PreAuthorize("hasRole('REVIEWER')")
+    public ResponseEntity<AnnotationResponse> reviewAnnotation(
+            @PathVariable Long reviewingId,
+            @Valid @RequestBody ReviewAnnotationRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long reviewerId = ((User) userDetails).getUserId();
+        return ResponseEntity.ok(annotationService.reviewAnnotation(reviewingId, request, reviewerId));
     }
 }

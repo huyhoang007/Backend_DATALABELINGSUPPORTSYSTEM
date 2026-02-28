@@ -2,6 +2,7 @@ package com.datalabeling.datalabelingsupportsystem.service.Labeling;
 
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.SaveAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.UpdateAnnotationRequest;
+import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.ReviewAnnotationRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.AnnotationResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.AnnotatorAssignmentResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.WorkSpace.AnnotationWorkspaceResponse;
@@ -30,4 +31,14 @@ public interface AnnotationService {
 
     // Nộp để review
     void submitAssignment(Long assignmentId, Long annotatorId);
+
+    /**
+     * Reviewer đánh giá annotation cụ thể.
+     *
+     * @param reviewingId id của reviewing
+     * @param request     nội dung đánh giá (có lỗi hay không, policy id nếu lỗi)
+     * @param reviewerId  id người review (lấy từ authentication principal)
+     * @return trạng thái annotation sau khi review
+     */
+    AnnotationResponse reviewAnnotation(Long reviewingId, ReviewAnnotationRequest request, Long reviewerId);
 }

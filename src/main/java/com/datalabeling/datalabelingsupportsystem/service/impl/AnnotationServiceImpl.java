@@ -13,11 +13,16 @@ import com.datalabeling.datalabelingsupportsystem.enums.Reviewing.ReviewingStatu
 import com.datalabeling.datalabelingsupportsystem.exception.ResourceNotFoundException;
 import com.datalabeling.datalabelingsupportsystem.exception.ValidationException;
 import com.datalabeling.datalabelingsupportsystem.pojo.*;
+import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.ReviewAnnotationRequest;
+import com.datalabeling.datalabelingsupportsystem.pojo.Policy;
+import com.datalabeling.datalabelingsupportsystem.pojo.User;
 import com.datalabeling.datalabelingsupportsystem.repository.Assignment.AssignmentRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DataItemRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRuleRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Labeling.ReviewingRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Policy.PolicyRepository;
 import com.datalabeling.datalabelingsupportsystem.service.Labeling.AnnotationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,6 +41,8 @@ public class AnnotationServiceImpl implements AnnotationService {
         private final DataItemRepository dataItemRepository;
         private final LabelRepository labelRepository;
         private final LabelRuleRepository labelRuleRepository;
+        private final UserRepository userRepository;
+        private final PolicyRepository policyRepository;
 
         // 1. LẤY DANH SÁCH TASK CỦA ANNOTATOR
         @Override
@@ -299,6 +306,67 @@ public class AnnotationServiceImpl implements AnnotationService {
                 assignmentRepository.save(assignment);
         }
 
+        // 8. REVIEW ANNOTATION (BY REVIEWER)
+        @Override
+        @Transactional
+        public AnnotationResponse reviewAnnotation(Long reviewingId, ReviewAnnotationRequest request, Long reviewerId) {
+                Reviewing reviewing = reviewingRepository.findById(reviewingId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Annotation not found"));
+
+            Assignment assignment = getAssignment(reviewerId, reviewing);
+
+                // cập nhật trạng thái và policy
+                if (Boolean.TRUE.equals(request.getHasError())) {
+                        if (request.getPolicyId() == null) {
+                                throw new ValidationException("policyId is required when hasError is true");
+                        }
+                        Policy policy = policyRepository.findById(request.getPolicyId())
+                                        .orElseThrow(() -> new ResourceNotFoundException("Policy not found"));
+                        reviewing.setPolicy(policy);
+                        reviewing.setStatus(ReviewingStatus.REJECTED);
+
+                        // khi một annotation bị từ chối, assignment ngay lập tức bị REJECTED
+                        assignment.setStatus(AssignmentStatus.REJECTED);
+                        assignmentRepository.save(assignment);
+                } else {
+                        // không có lỗi: approve
+                        reviewing.setPolicy(null);
+                        reviewing.setStatus(ReviewingStatus.APPROVED);
+
+                        // nếu tất cả annotation thuộc assignment đều không bị reject thì đánh dấu hoàn thành
+                        boolean anyRejected = reviewingRepository
+                                        .findByAssignment_AssignmentId(assignment.getAssignmentId())
+                                        .stream()
+                                        .anyMatch(r -> r.getStatus() == ReviewingStatus.REJECTED);
+                        if (!anyRejected) {
+                                assignment.setStatus(AssignmentStatus.APPROVED);
+                                assignmentRepository.save(assignment);
+                        }
+                }
+
+                // gán reviewer và lưu
+                User reviewer = userRepository.findById(reviewerId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Reviewer not found"));
+                reviewing.setReviewer(reviewer);
+                reviewing = reviewingRepository.save(reviewing);
+                return toAnnotationResponse(reviewing);
+        }
+
+        private static Assignment getAssignment(Long reviewerId, Reviewing reviewing) {
+                Assignment assignment = reviewing.getAssignment();
+                // đảm bảo reviewer chính là người được phân công
+                if (assignment.getReviewer() == null || !assignment.getReviewer().getUserId().equals(reviewerId)) {
+                        throw new ValidationException("Access denied: only assigned reviewer can review");
+                }
+
+                // assignment phải đang ở trạng thái SUBMITTED hoặc REJECTED để review
+                if (!(assignment.getStatus() == AssignmentStatus.SUBMITTED
+                                || assignment.getStatus() == AssignmentStatus.REJECTED)) {
+                        throw new ValidationException("Assignment is not ready for review");
+                }
+                return assignment;
+        }
+
         /**
          * Kiểm tra assignment có cho phép chỉnh sửa annotation không
          * PENDING, IN_PROGRESS, REJECTED → được phép
@@ -343,6 +411,10 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 .geometry(r.getGeometry())
                                 .status(r.getStatus())
                                 .isImproved(r.getIsImproved())
+                                .reviewerId(r.getReviewer() != null ? r.getReviewer().getUserId() : null)
+                                .reviewerName(r.getReviewer() != null ? r.getReviewer().getFullName() : null)
+                                .policyId(r.getPolicy() != null ? r.getPolicy().getPolicyId() : null)
+                                .policyName(r.getPolicy() != null ? r.getPolicy().getErrorName() : null)
                                 .build();
         }
 }
