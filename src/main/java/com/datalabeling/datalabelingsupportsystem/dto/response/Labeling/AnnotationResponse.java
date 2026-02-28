@@ -16,4 +16,12 @@ public class AnnotationResponse {
     private String geometry;
     private ReviewingStatus status;
     private Boolean isImproved;
+
+    // thông tin reviewer đã đánh giá (nếu có)
+    private Long reviewerId;
+    private String reviewerName;
+
+    // policy vi phạm, null nếu annotation chấp nhận
+    private Long policyId;
+    private String policyName;
 }

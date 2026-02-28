@@ -44,4 +44,12 @@ public class Reviewing {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reviewer_id")
     private User reviewer;
+
+    /**
+     * policy bị vi phạm (nếu annotator gắn sai label theo policy)
+     * null khi annotation được chấp nhận
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "policy_id")
+    private Policy policy;
 }

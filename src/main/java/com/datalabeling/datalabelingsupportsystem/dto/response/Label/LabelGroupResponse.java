@@ -1,6 +1,5 @@
 package com.datalabeling.datalabelingsupportsystem.dto.response.Label;
 
-import com.datalabeling.datalabelingsupportsystem.dto.response.Label.LabelResponse;
 import lombok.Builder;
 import lombok.Data;
 

@@ -19,5 +19,8 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
 
     Optional<Assignment> findByAssignmentIdAndAnnotator_UserId(Long assignmentId, Long annotatorId);
 
+    // Reviewer queries
+    List<Assignment> findByReviewer_UserId(Long reviewerId);
+
     boolean existsByDataset_DatasetIdAndAnnotator_UserId(Long datasetId, Long annotatorId);
 }
