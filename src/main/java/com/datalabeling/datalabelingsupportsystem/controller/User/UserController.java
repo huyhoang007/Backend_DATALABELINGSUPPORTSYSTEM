@@ -46,7 +46,7 @@ public class UserController {
 
     // CHỈ ADMIN - Xem tất cả users
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN','MANAGER')")
     @Operation(summary = "Get all users (ADMIN only)")
     public ResponseEntity<Page<UserResponse>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
