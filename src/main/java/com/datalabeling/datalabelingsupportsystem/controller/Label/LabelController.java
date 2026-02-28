@@ -31,7 +31,7 @@ public class LabelController {
     }
     
     @GetMapping
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ANNOTATOR')")
     @Operation(summary = "Get all labels")
     public ResponseEntity<List<LabelResponse>> getAllLabels() {
         List<LabelResponse> labels = labelService.getAllLabels();
@@ -39,7 +39,7 @@ public class LabelController {
     }
     
     @GetMapping("/active")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ANNOTATOR')")
     @Operation(summary = "Get active labels only")
     public ResponseEntity<List<LabelResponse>> getActiveLabels() {
         List<LabelResponse> labels = labelService.getActiveLabels();
