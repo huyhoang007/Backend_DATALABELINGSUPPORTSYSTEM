@@ -19,9 +19,9 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Label Management")
 public class LabelController {
-    
+
     private final LabelService labelService;
-    
+
     @PostMapping
     @PreAuthorize("hasAnyRole('MANAGER')")
     @Operation(summary = "Create new label")
@@ -29,7 +29,7 @@ public class LabelController {
         LabelResponse response = labelService.createLabel(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-    
+
     @GetMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'ANNOTATOR', 'REVIEWER')")
     @Operation(summary = "Get all labels")
@@ -37,7 +37,7 @@ public class LabelController {
         List<LabelResponse> labels = labelService.getAllLabels();
         return ResponseEntity.ok(labels);
     }
-    
+
     @GetMapping("/active")
     @PreAuthorize("hasAnyRole('MANAGER', 'ANNOTATOR', 'REVIEWER')")
     @Operation(summary = "Get active labels only")
@@ -45,7 +45,7 @@ public class LabelController {
         List<LabelResponse> labels = labelService.getActiveLabels();
         return ResponseEntity.ok(labels);
     }
-    
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'ANNOTATOR', 'REVIEWER')")
     @Operation(summary = "Get label by ID")
@@ -53,7 +53,7 @@ public class LabelController {
         LabelResponse label = labelService.getLabelById(id);
         return ResponseEntity.ok(label);
     }
-    
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('MANAGER')")
     @Operation(summary = "Update label")
@@ -63,7 +63,7 @@ public class LabelController {
         LabelResponse response = labelService.updateLabel(id, request);
         return ResponseEntity.ok(response);
     }
-    
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('MANAGER')")
     @Operation(summary = "Soft delete label")
