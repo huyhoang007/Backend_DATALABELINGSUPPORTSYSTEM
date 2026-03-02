@@ -95,8 +95,14 @@ public interface AnalyticsRepository extends JpaRepository<Assignment, Long> {
             "WHERE a.project.projectId = :projectId AND a.reviewer IS NOT NULL")
     List<Object> findReviewersByProject(@Param("projectId") Long projectId);
     
-    @Query("SELECT SUM(DATEDIFF(a.completedAt, a.createdAt)) / COUNT(a) FROM Assignment a " +
-            "WHERE a.annotator.userId = :userId AND a.completedAt IS NOT NULL")
-    Long getAverageCompletionTimeByUser(@Param("userId") Long userId);
+    // Use a native Postgres query to calculate average completion time in seconds.
+    // The previous HQL implementation caused startup failures because Hibernate's
+    // timestampdiff()/DATEDIFF() functions either require a temporal unit or are
+    // treated as Objects.  A native query avoids the problem entirely.
+    @Query(value = "SELECT AVG(EXTRACT(EPOCH FROM (completed_at - created_at))) " +
+                   "FROM \"Assignments\" " +
+                   "WHERE annotator_id = :userId AND completed_at IS NOT NULL",
+           nativeQuery = true)
+    Double getAverageCompletionTimeByUser(@Param("userId") Long userId);
     
 }
