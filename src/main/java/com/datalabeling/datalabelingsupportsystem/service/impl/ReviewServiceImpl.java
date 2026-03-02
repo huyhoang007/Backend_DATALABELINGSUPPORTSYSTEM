@@ -93,9 +93,9 @@ public class ReviewServiceImpl implements ReviewService {
                 })
                 .collect(Collectors.toList());
 
-        // Lấy labels gom nhóm
+        // Lấy labels gom nhóm (by project)
         List<LabelRule> labelRules = labelRuleRepository
-                .findLabelRulesByDatasetId(assignment.getDataset().getDatasetId());
+                .findLabelRulesByProjectId(assignment.getProject().getProjectId());
 
         List<LabelGroupResponse> labelGroups = labelRules.stream()
                 .map(rule -> LabelGroupResponse.builder()

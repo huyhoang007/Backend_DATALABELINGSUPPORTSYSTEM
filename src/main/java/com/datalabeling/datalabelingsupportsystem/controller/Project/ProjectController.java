@@ -1,8 +1,11 @@
 package com.datalabeling.datalabelingsupportsystem.controller.Project;
 
 import com.datalabeling.datalabelingsupportsystem.dto.request.Project.CreateProjectRequest;
+import com.datalabeling.datalabelingsupportsystem.dto.request.Project.SetProjectLabelRulesRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.request.Project.UpdateProjectRequest;
+import com.datalabeling.datalabelingsupportsystem.dto.response.Label.LabelRuleResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Project.ProjectResponse;
+import com.datalabeling.datalabelingsupportsystem.service.Project.ProjectLabelRuleService;
 import com.datalabeling.datalabelingsupportsystem.service.Project.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -24,6 +27,7 @@ import java.util.List;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final ProjectLabelRuleService projectLabelRuleService;
 
     @Operation(summary = "Create new project", description = "Manager creates a new project")
     @PreAuthorize("hasRole('MANAGER')")
@@ -75,5 +79,22 @@ public class ProjectController {
             @Valid @RequestBody UpdateProjectRequest request) {
         ProjectResponse response = projectService.updateProject(projectId, request);
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Get label rules for project", description = "Returns label rules linked to a project")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ANNOTATOR')")
+    @GetMapping("/{projectId}/label-rules")
+    public ResponseEntity<List<LabelRuleResponse>> getProjectLabelRules(@PathVariable Long projectId) {
+        return ResponseEntity.ok(projectLabelRuleService.getProjectLabelRules(projectId));
+    }
+
+    @Operation(summary = "Set label rules for project", description = "Replaces all label-rule associations for a project")
+    @PreAuthorize("hasRole('MANAGER')")
+    @PutMapping("/{projectId}/label-rules")
+    public ResponseEntity<Void> setProjectLabelRules(
+            @PathVariable Long projectId,
+            @RequestBody SetProjectLabelRulesRequest request) {
+        projectLabelRuleService.setProjectLabelRules(projectId, request.getRuleIds());
+        return ResponseEntity.noContent().build();
     }
 }

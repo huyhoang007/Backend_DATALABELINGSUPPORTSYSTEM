@@ -105,9 +105,9 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 })
                                 .collect(Collectors.toList());
 
-                // ✅ Lấy labels gom nhóm theo LabelRule
+                // ✅ Lấy labels gom nhóm theo LabelRule (by project)
                 List<LabelRule> labelRules = labelRuleRepository
-                                .findLabelRulesByDatasetId(assignment.getDataset().getDatasetId());
+                                .findLabelRulesByProjectId(assignment.getProject().getProjectId());
 
                 List<LabelGroupResponse> labelGroups = labelRules.stream()
                                 .map(rule -> LabelGroupResponse.builder()

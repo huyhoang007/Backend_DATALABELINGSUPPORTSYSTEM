@@ -17,4 +17,11 @@ public interface LabelRuleRepository extends JpaRepository<LabelRule, Long> {
             WHERE dlr.dataset_id = :datasetId
             """, nativeQuery = true)
     List<LabelRule> findLabelRulesByDatasetId(@Param("datasetId") Long datasetId);
+
+    @Query(value = """
+            SELECT DISTINCT lr.* FROM label_rules lr
+            JOIN project_labelrule plr ON plr.rule_id = lr.rule_id
+            WHERE plr.project_id = :projectId
+            """, nativeQuery = true)
+    List<LabelRule> findLabelRulesByProjectId(@Param("projectId") Long projectId);
 }
