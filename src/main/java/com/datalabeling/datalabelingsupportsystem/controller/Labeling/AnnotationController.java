@@ -170,4 +170,18 @@ public class AnnotationController {
         Long reviewerId = ((User) userDetails).getUserId();
         return ResponseEntity.ok(reviewService.getReviewAnnotationsByItem(assignmentId, itemId, reviewerId));
     }
+
+    /**
+     * Reviewer nộp kết quả đánh giá sau khi xét tất cả annotation.
+     * Validate: không còn annotation PENDING → set assignment APPROVED/REJECTED.
+     */
+    @PostMapping("/assignments/{assignmentId}/submit-review")
+    @PreAuthorize("hasRole('REVIEWER')")
+    public ResponseEntity<Void> submitReview(
+            @PathVariable Long assignmentId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long reviewerId = ((User) userDetails).getUserId();
+        reviewService.submitReview(assignmentId, reviewerId);
+        return ResponseEntity.ok().build();
+    }
 }
