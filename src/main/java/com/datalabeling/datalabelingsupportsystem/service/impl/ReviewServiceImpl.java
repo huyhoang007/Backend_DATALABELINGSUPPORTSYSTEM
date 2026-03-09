@@ -186,12 +186,15 @@ public class ReviewServiceImpl implements ReviewService {
             reviewing.setPolicy(null);
             reviewing.setStatus(ReviewingStatus.APPROVED);
 
-            // nếu tất cả annotation thuộc assignment đều không bị reject thì đánh dấu hoàn thành
-            boolean anyRejected = reviewingRepository
-                    .findByAssignment_AssignmentId(assignment.getAssignmentId())
-                    .stream()
+            // ✅ Chỉ set APPROVED khi TẤT CẢ annotation đã được review VÀ không có cái nào bị reject
+            List<Reviewing> allReviewings = reviewingRepository
+                    .findByAssignment_AssignmentId(assignment.getAssignmentId());
+            boolean anyRejected = allReviewings.stream()
                     .anyMatch(r -> r.getStatus() == ReviewingStatus.REJECTED);
-            if (!anyRejected) {
+            boolean allReviewed = allReviewings.stream()
+                    .allMatch(r -> r.getStatus() == ReviewingStatus.APPROVED
+                            || r.getStatus() == ReviewingStatus.REJECTED);
+            if (allReviewed && !anyRejected) {
                 assignment.setStatus(AssignmentStatus.APPROVED);
                 assignmentRepository.save(assignment);
             }
@@ -203,6 +206,40 @@ public class ReviewServiceImpl implements ReviewService {
         reviewing.setReviewer(reviewer);
         reviewing = reviewingRepository.save(reviewing);
         return toAnnotationResponse(reviewing);
+    }
+
+    @Override
+    @Transactional
+    public void submitReview(Long assignmentId, Long reviewerId) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+
+        if (assignment.getReviewer() == null || !assignment.getReviewer().getUserId().equals(reviewerId)) {
+            throw new ValidationException("Access denied: not assigned reviewer");
+        }
+
+        if (assignment.getStatus() != AssignmentStatus.SUBMITTED
+                && assignment.getStatus() != AssignmentStatus.REJECTED) {
+            throw new ValidationException("Assignment is not in a reviewable state. Current status: " + assignment.getStatus());
+        }
+
+        List<Reviewing> allReviewings = reviewingRepository.findByAssignment_AssignmentId(assignmentId);
+        if (allReviewings.isEmpty()) {
+            throw new ValidationException("Không có annotation nào để đánh giá");
+        }
+
+        long pendingCount = allReviewings.stream()
+                .filter(r -> r.getStatus() == ReviewingStatus.PENDING || r.getStatus() == null)
+                .count();
+        if (pendingCount > 0) {
+            throw new ValidationException(
+                    "Còn " + pendingCount + " annotation chưa được đánh giá. Vui lòng xét hết trước khi nộp.");
+        }
+
+        boolean anyRejected = allReviewings.stream()
+                .anyMatch(r -> r.getStatus() == ReviewingStatus.REJECTED);
+        assignment.setStatus(anyRejected ? AssignmentStatus.REJECTED : AssignmentStatus.APPROVED);
+        assignmentRepository.save(assignment);
     }
 
     private static Assignment getAssignment(Long reviewerId, Reviewing reviewing) {

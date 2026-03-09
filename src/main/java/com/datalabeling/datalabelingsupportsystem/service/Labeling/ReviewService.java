@@ -44,4 +44,11 @@ public interface ReviewService {
      * @return annotation response với status mới
      */
     AnnotationResponse reviewAnnotation(Long reviewingId, ReviewAnnotationRequest request, Long reviewerId);
+
+    /**
+     * Reviewer nộp kết quả đánh giá sau khi đã xét tất cả annotation.
+     * - Validate: không còn annotation nào PENDING.
+     * - Set assignment: APPROVED nếu không có REJECTED, REJECTED nếu có.
+     */
+    void submitReview(Long assignmentId, Long reviewerId);
 }
