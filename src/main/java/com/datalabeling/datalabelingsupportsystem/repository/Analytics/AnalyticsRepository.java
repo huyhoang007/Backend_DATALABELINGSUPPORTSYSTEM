@@ -104,5 +104,6 @@ public interface AnalyticsRepository extends JpaRepository<Assignment, Long> {
                    "WHERE annotator_id = :userId AND completed_at IS NOT NULL",
            nativeQuery = true)
     Double getAverageCompletionTimeByUser(@Param("userId") Long userId);
-    
+
+
 }

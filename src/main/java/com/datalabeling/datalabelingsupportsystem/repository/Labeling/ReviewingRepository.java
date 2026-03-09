@@ -1,5 +1,6 @@
 package com.datalabeling.datalabelingsupportsystem.repository.Labeling;
 
+import com.datalabeling.datalabelingsupportsystem.enums.Reviewing.ReviewingStatus;
 import com.datalabeling.datalabelingsupportsystem.pojo.Reviewing;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -24,4 +25,10 @@ public interface ReviewingRepository extends JpaRepository<Reviewing, Long> {
     boolean existsByReviewingIdAndAnnotator_UserId(Long reviewingId, Long annotatorId);
 
     long countByAssignment_AssignmentId(Long assignmentAssignmentId);
+
+    // Export: lấy tất cả annotations của 1 dataset
+    List<Reviewing> findByDataItem_Dataset_DatasetId(Long datasetId);
+
+    // Export: lọc theo status (VD: chỉ APPROVED)
+    List<Reviewing> findByDataItem_Dataset_DatasetIdAndStatus(Long datasetId, ReviewingStatus status);
 }

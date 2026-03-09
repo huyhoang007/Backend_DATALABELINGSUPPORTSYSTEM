@@ -3,17 +3,22 @@ package com.datalabeling.datalabelingsupportsystem.controller.DataSet;
 import com.datalabeling.datalabelingsupportsystem.dto.request.DataSet.UpdateDatasetRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.DataItem.DataItemResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.DataSet.DatasetResponse;
+import com.datalabeling.datalabelingsupportsystem.dto.response.Export.DatasetExportResponse;
+import com.datalabeling.datalabelingsupportsystem.enums.Reviewing.ReviewingStatus;
+import com.datalabeling.datalabelingsupportsystem.service.DataSet.DatasetExportService;
 import com.datalabeling.datalabelingsupportsystem.service.DataSet.DatasetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -22,6 +27,7 @@ import java.util.List;
 public class DatasetController {
 
     private final DatasetService datasetService;
+    private final DatasetExportService datasetExportService;
 
     @Operation(summary = "Upload batch mới vào project")
     @PostMapping(value = "/projects/{projectId}/datasets", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -71,5 +77,44 @@ public class DatasetController {
     public ResponseEntity<Void> softDeleteItem(@PathVariable Long itemId) {
         datasetService.softDeleteItem(itemId);
         return ResponseEntity.noContent().build();
+    }
+
+    // ─── EXPORT ──────────────────────────────────────────────────────────────
+
+    @Operation(summary = "Export dataset dạng JSON",
+               description = "Trả về file JSON chứa toàn bộ ảnh và annotation của dataset. " +
+                             "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
+    @GetMapping("/datasets/{datasetId}/export/json")
+    public ResponseEntity<DatasetExportResponse> exportJson(
+            @PathVariable Long datasetId,
+            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)")
+            @RequestParam(value = "status", required = false) ReviewingStatus status) {
+
+        DatasetExportResponse body = datasetExportService.buildExport(datasetId, status);
+        String filename = "dataset_" + datasetId + "_export.json";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
+    }
+
+    @Operation(summary = "Export dataset dạng CSV",
+               description = "Trả về file CSV, mỗi hàng là 1 annotation. " +
+                             "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
+    @GetMapping("/datasets/{datasetId}/export/csv")
+    public ResponseEntity<byte[]> exportCsv(
+            @PathVariable Long datasetId,
+            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)")
+            @RequestParam(value = "status", required = false) ReviewingStatus status) {
+
+        String csv = datasetExportService.buildCsv(datasetId, status);
+        byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
+        String filename = "dataset_" + datasetId + "_export.csv";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(bytes);
     }
 }
