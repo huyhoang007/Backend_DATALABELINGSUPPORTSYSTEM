@@ -95,7 +95,7 @@ public interface AnalyticsRepository extends JpaRepository<Assignment, Long> {
             "WHERE a.project.projectId = :projectId AND a.reviewer IS NOT NULL")
     List<Object> findReviewersByProject(@Param("projectId") Long projectId);
     
-    @Query("SELECT SUM(DATEDIFF(a.completedAt, a.createdAt)) / COUNT(a) FROM Assignment a " +
+    @Query("SELECT SUM(timestampdiff(day, a.createdAt, a.completedAt)) / COUNT(a) FROM Assignment a " +
             "WHERE a.annotator.userId = :userId AND a.completedAt IS NOT NULL")
     Long getAverageCompletionTimeByUser(@Param("userId") Long userId);
     
