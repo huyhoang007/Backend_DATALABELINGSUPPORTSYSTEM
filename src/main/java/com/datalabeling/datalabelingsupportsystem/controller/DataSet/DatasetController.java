@@ -81,14 +81,13 @@ public class DatasetController {
 
     // ─── EXPORT ──────────────────────────────────────────────────────────────
 
-    @Operation(summary = "Export dataset dạng JSON",
-               description = "Trả về file JSON chứa toàn bộ ảnh và annotation của dataset. " +
-                             "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
+    @Operation(summary = "Export dataset dạng JSON", description = "Trả về file JSON chứa toàn bộ ảnh và annotation của dataset. "
+            +
+            "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
     @GetMapping("/datasets/{datasetId}/export/json")
     public ResponseEntity<DatasetExportResponse> exportJson(
             @PathVariable Long datasetId,
-            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)")
-            @RequestParam(value = "status", required = false) ReviewingStatus status) {
+            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)") @RequestParam(value = "status", required = false) ReviewingStatus status) {
 
         DatasetExportResponse body = datasetExportService.buildExport(datasetId, status);
         String filename = "dataset_" + datasetId + "_export.json";
@@ -99,14 +98,12 @@ public class DatasetController {
                 .body(body);
     }
 
-    @Operation(summary = "Export dataset dạng CSV",
-               description = "Trả về file CSV, mỗi hàng là 1 annotation. " +
-                             "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
+    @Operation(summary = "Export dataset dạng CSV", description = "Trả về file CSV, mỗi hàng là 1 annotation. " +
+            "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
     @GetMapping("/datasets/{datasetId}/export/csv")
     public ResponseEntity<byte[]> exportCsv(
             @PathVariable Long datasetId,
-            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)")
-            @RequestParam(value = "status", required = false) ReviewingStatus status) {
+            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)") @RequestParam(value = "status", required = false) ReviewingStatus status) {
 
         String csv = datasetExportService.buildCsv(datasetId, status);
         byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
@@ -118,14 +115,14 @@ public class DatasetController {
                 .body(bytes);
     }
 
-    @Operation(summary = "Export dataset dạng COCO JSON",
-               description = "Trả về file JSON theo chuẩn COCO (info, images, annotations, categories). " +
-                             "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
+    @Operation(summary = "Export dataset dạng COCO JSON", description = "Trả về file JSON theo chuẩn COCO (info, images, annotations, categories). "
+            +
+            "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
     @GetMapping("/datasets/{datasetId}/export/coco")
     public ResponseEntity<byte[]> exportCoco(
             @PathVariable Long datasetId,
-            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)")
-            @RequestParam(value = "status", required = false) ReviewingStatus status) throws java.io.IOException {
+            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)") @RequestParam(value = "status", required = false) ReviewingStatus status)
+            throws java.io.IOException {
 
         byte[] bytes = datasetExportService.buildCocoJson(datasetId, status);
         String filename = "dataset_" + datasetId + "_coco.json";
@@ -136,14 +133,14 @@ public class DatasetController {
                 .body(bytes);
     }
 
-    @Operation(summary = "Export dataset dạng YOLO (ZIP)",
-               description = "Trả về ZIP chứa classes.txt, labels/*.txt (bbox normalize 0-1), images/*. " +
-                             "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
+    @Operation(summary = "Export dataset dạng YOLO (ZIP)", description = "Trả về ZIP chứa classes.txt, labels/*.txt (bbox normalize 0-1), images/*. "
+            +
+            "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
     @GetMapping("/datasets/{datasetId}/export/yolo")
     public ResponseEntity<byte[]> exportYolo(
             @PathVariable Long datasetId,
-            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)")
-            @RequestParam(value = "status", required = false) ReviewingStatus status) throws java.io.IOException {
+            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)") @RequestParam(value = "status", required = false) ReviewingStatus status)
+            throws java.io.IOException {
 
         byte[] bytes = datasetExportService.buildYoloZip(datasetId, status);
         String filename = "dataset_" + datasetId + "_yolo.zip";
@@ -154,14 +151,14 @@ public class DatasetController {
                 .body(bytes);
     }
 
-    @Operation(summary = "Export dataset dạng Pascal VOC (ZIP)",
-               description = "Trả về ZIP chứa Annotations/*.xml và JPEGImages/*. " +
-                             "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
+    @Operation(summary = "Export dataset dạng Pascal VOC (ZIP)", description = "Trả về ZIP chứa Annotations/*.xml và JPEGImages/*. "
+            +
+            "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
     @GetMapping("/datasets/{datasetId}/export/pascal-voc")
     public ResponseEntity<byte[]> exportPascalVoc(
             @PathVariable Long datasetId,
-            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)")
-            @RequestParam(value = "status", required = false) ReviewingStatus status) throws java.io.IOException {
+            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)") @RequestParam(value = "status", required = false) ReviewingStatus status)
+            throws java.io.IOException {
 
         byte[] bytes = datasetExportService.buildPascalVocZip(datasetId, status);
         String filename = "dataset_" + datasetId + "_pascal_voc.zip";

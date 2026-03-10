@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/DataLabeling
-    username: postgres
-    password: thubinh
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/DataLabeling}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:thubinh}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -26,7 +26,12 @@ spring:
   # Serve static files từ thư mục uploads
   web:
     resources:
-      static-locations: classpath:/static/,file:uploads/
+      static-locations: classpath:/static/
+
+azure:
+  storage:
+    connection-string: ${AZURE_STORAGE_CONNECTION_STRING:}
+    container-name: ${AZURE_STORAGE_CONTAINER:uploads}
 
 logging:
   level:

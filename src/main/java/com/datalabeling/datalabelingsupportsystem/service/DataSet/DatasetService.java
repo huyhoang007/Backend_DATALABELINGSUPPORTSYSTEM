@@ -10,6 +10,7 @@ import com.datalabeling.datalabelingsupportsystem.pojo.Project;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DataItemRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DatasetRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
+import com.datalabeling.datalabelingsupportsystem.service.Azure.AzureBlobService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,8 +34,7 @@ public class DatasetService {
     private final DatasetRepository datasetRepository;
     private final DataItemRepository dataItemRepository;
     private final ProjectRepository projectRepository;
-
-    private static final String UPLOAD_DIR = "uploads/";
+    private final AzureBlobService azureBlobService;
 
     // ===================== GROUP A =====================
 
@@ -152,57 +152,41 @@ public class DatasetService {
     private List<DataItem> uploadAndCreateItems(List<MultipartFile> files, Dataset dataset) throws IOException {
         List<DataItem> items = new ArrayList<>();
 
-        Path uploadPath = Paths.get(UPLOAD_DIR + "project_" + dataset.getProject().getProjectId());
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-        }
-
         for (MultipartFile file : files) {
-            if (file.isEmpty())
-                continue;
+            if (file.isEmpty()) continue;
 
-            // Tạo tên file unique
             String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename != null && originalFilename.contains(".")
+            String extension = (originalFilename != null && originalFilename.contains("."))
                     ? originalFilename.substring(originalFilename.lastIndexOf("."))
                     : "";
             String newFileName = UUID.randomUUID() + extension;
-
-            // Lưu file vào disk
-            Path filePath = uploadPath.resolve(newFileName);
-            Files.copy(file.getInputStream(), filePath);
+            String blobName = "project_" + dataset.getProject().getProjectId() + "/" + newFileName;
 
             String contentType = file.getContentType();
-            String fileType = resolveFileType(contentType);
+            byte[] fileBytes = file.getBytes();
 
-            // ← Đọc width/height từ file vừa lưu
-            Integer width = null;
-            Integer height = null;
+            // Upload lên Azure Blob (hoặc local disk nếu dev)
+            azureBlobService.uploadFile(blobName, fileBytes, contentType != null ? contentType : "application/octet-stream");
+
+            // Đọc width/height
+            Integer width = null, height = null;
             if (contentType != null && contentType.startsWith("image/")) {
                 try {
-                    BufferedImage img = ImageIO.read(filePath.toFile());
-                    if (img != null) {
-                        width = img.getWidth();
-                        height = img.getHeight();
-                    }
-                } catch (IOException e) {
-                    // PDF/CSV thì để null bình thường
-                }
+                    BufferedImage img = ImageIO.read(new java.io.ByteArrayInputStream(fileBytes));
+                    if (img != null) { width = img.getWidth(); height = img.getHeight(); }
+                } catch (IOException ignored) {}
             }
 
-            DataItem item = DataItem.builder()
+            items.add(DataItem.builder()
                     .dataset(dataset)
-                    .fileUrl("/uploads/project_" + dataset.getProject().getProjectId() + "/" + newFileName)
+                    .fileUrl("/uploads/" + blobName)
                     .fileName(originalFilename)
-                    .fileType(fileType)
+                    .fileType(resolveFileType(contentType))
                     .width(width)
                     .height(height)
                     .isActive(true)
-                    .build();
-
-            items.add(item);
+                    .build());
         }
-
         return items;
     }
 

@@ -11,6 +11,7 @@ import com.datalabeling.datalabelingsupportsystem.pojo.Reviewing;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DataItemRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DatasetRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Labeling.ReviewingRepository;
+import com.datalabeling.datalabelingsupportsystem.service.Azure.AzureBlobService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -40,6 +41,7 @@ public class DatasetExportService {
     private final DataItemRepository dataItemRepository;
     private final ReviewingRepository reviewingRepository;
     private final ObjectMapper objectMapper;
+    private final AzureBlobService azureBlobService;
 
     @Value("${app.upload.path:uploads}")
     private String uploadPath;
@@ -48,7 +50,8 @@ public class DatasetExportService {
      * Xây dựng DatasetExportResponse cho JSON export.
      *
      * @param datasetId    ID của dataset cần export
-     * @param statusFilter null = tất cả status | APPROVED/PENDING/REJECTED/IMPROVED = lọc
+     * @param statusFilter null = tất cả status | APPROVED/PENDING/REJECTED/IMPROVED
+     *                     = lọc
      */
     @Transactional(readOnly = true)
     public DatasetExportResponse buildExport(Long datasetId, ReviewingStatus statusFilter) {
@@ -116,40 +119,40 @@ public class DatasetExportService {
         StringBuilder sb = new StringBuilder();
         // Header
         sb.append("dataset_id,dataset_name,item_id,file_name,file_url,width,height,")
-          .append("reviewing_id,label_id,label_name,label_type,color_code,")
-          .append("geometry,status,is_improved,annotator_name,reviewer_name\n");
+                .append("reviewing_id,label_id,label_name,label_type,color_code,")
+                .append("geometry,status,is_improved,annotator_name,reviewer_name\n");
 
         for (ExportDataItemDto item : export.getImages()) {
             if (item.getAnnotations().isEmpty()) {
                 // Dòng ảnh không có annotation
                 sb.append(csvEscape(export.getDatasetId()))
-                  .append(",").append(csvEscape(export.getDatasetName()))
-                  .append(",").append(csvEscape(item.getItemId()))
-                  .append(",").append(csvEscape(item.getFileName()))
-                  .append(",").append(csvEscape(item.getFileUrl()))
-                  .append(",").append(csvEscape(item.getWidth()))
-                  .append(",").append(csvEscape(item.getHeight()))
-                  .append(",,,,,,,,,\n");
+                        .append(",").append(csvEscape(export.getDatasetName()))
+                        .append(",").append(csvEscape(item.getItemId()))
+                        .append(",").append(csvEscape(item.getFileName()))
+                        .append(",").append(csvEscape(item.getFileUrl()))
+                        .append(",").append(csvEscape(item.getWidth()))
+                        .append(",").append(csvEscape(item.getHeight()))
+                        .append(",,,,,,,,,\n");
             } else {
                 for (ExportAnnotationDto annot : item.getAnnotations()) {
                     sb.append(csvEscape(export.getDatasetId()))
-                      .append(",").append(csvEscape(export.getDatasetName()))
-                      .append(",").append(csvEscape(item.getItemId()))
-                      .append(",").append(csvEscape(item.getFileName()))
-                      .append(",").append(csvEscape(item.getFileUrl()))
-                      .append(",").append(csvEscape(item.getWidth()))
-                      .append(",").append(csvEscape(item.getHeight()))
-                      .append(",").append(csvEscape(annot.getReviewingId()))
-                      .append(",").append(csvEscape(annot.getLabelId()))
-                      .append(",").append(csvEscape(annot.getLabelName()))
-                      .append(",").append(csvEscape(annot.getLabelType()))
-                      .append(",").append(csvEscape(annot.getColorCode()))
-                      .append(",").append(csvEscape(annot.getGeometry()))
-                      .append(",").append(csvEscape(annot.getStatus()))
-                      .append(",").append(csvEscape(annot.getIsImproved()))
-                      .append(",").append(csvEscape(annot.getAnnotatorName()))
-                      .append(",").append(csvEscape(annot.getReviewerName()))
-                      .append("\n");
+                            .append(",").append(csvEscape(export.getDatasetName()))
+                            .append(",").append(csvEscape(item.getItemId()))
+                            .append(",").append(csvEscape(item.getFileName()))
+                            .append(",").append(csvEscape(item.getFileUrl()))
+                            .append(",").append(csvEscape(item.getWidth()))
+                            .append(",").append(csvEscape(item.getHeight()))
+                            .append(",").append(csvEscape(annot.getReviewingId()))
+                            .append(",").append(csvEscape(annot.getLabelId()))
+                            .append(",").append(csvEscape(annot.getLabelName()))
+                            .append(",").append(csvEscape(annot.getLabelType()))
+                            .append(",").append(csvEscape(annot.getColorCode()))
+                            .append(",").append(csvEscape(annot.getGeometry()))
+                            .append(",").append(csvEscape(annot.getStatus()))
+                            .append(",").append(csvEscape(annot.getIsImproved()))
+                            .append(",").append(csvEscape(annot.getAnnotatorName()))
+                            .append(",").append(csvEscape(annot.getReviewerName()))
+                            .append("\n");
                 }
             }
         }
@@ -175,7 +178,8 @@ public class DatasetExportService {
 
     /** Bao giá trị trong dấu nháy kép nếu chứa dấu phẩy hoặc xuống dòng. */
     private String csvEscape(Object value) {
-        if (value == null) return "";
+        if (value == null)
+            return "";
         String s = value.toString();
         if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
             return "\"" + s.replace("\"", "\"\"") + "\"";
@@ -286,9 +290,10 @@ public class DatasetExportService {
     /**
      * Export dataset theo định dạng YOLO, đóng gói thành ZIP.
      * Cấu trúc ZIP:
-     *   classes.txt          — tên class mỗi dòng, index = class_id
-     *   labels/{name}.txt    — một annotation mỗi dòng: class_id cx cy w h (normalize 0-1)
-     *   images/{name}        — ảnh gốc từ upload directory
+     * classes.txt — tên class mỗi dòng, index = class_id
+     * labels/{name}.txt — một annotation mỗi dòng: class_id cx cy w h (normalize
+     * 0-1)
+     * images/{name} — ảnh gốc từ upload directory
      */
     @Transactional(readOnly = true)
     public byte[] buildYoloZip(Long datasetId, ReviewingStatus statusFilter) throws IOException {
@@ -328,13 +333,14 @@ public class DatasetExportService {
                 StringBuilder labelContent = new StringBuilder();
                 for (Reviewing r : byItem.getOrDefault(item.getItemId(), List.of())) {
                     List<double[]> pts = parseGeometry(r.getGeometry());
-                    if (pts.isEmpty()) continue;
+                    if (pts.isEmpty())
+                        continue;
                     double[] bbox = pointsToBbox(pts);
                     int classId = labelToClassId.getOrDefault(r.getLabel().getLabelId(), 0);
                     double cx = (bbox[0] + bbox[2] / 2.0) / imgW;
                     double cy = (bbox[1] + bbox[3] / 2.0) / imgH;
-                    double w  = bbox[2] / imgW;
-                    double h  = bbox[3] / imgH;
+                    double w = bbox[2] / imgW;
+                    double h = bbox[3] / imgH;
                     labelContent.append(String.format(Locale.US, "%d %.6f %.6f %.6f %.6f%n", classId, cx, cy, w, h));
                 }
 
@@ -357,8 +363,8 @@ public class DatasetExportService {
     /**
      * Export dataset theo định dạng Pascal VOC, đóng gói thành ZIP.
      * Cấu trúc ZIP:
-     *   Annotations/{name}.xml   — XML annotation theo chuẩn VOC
-     *   JPEGImages/{name}        — ảnh gốc từ upload directory
+     * Annotations/{name}.xml — XML annotation theo chuẩn VOC
+     * JPEGImages/{name} — ảnh gốc từ upload directory
      */
     @Transactional(readOnly = true)
     public byte[] buildPascalVocZip(Long datasetId, ReviewingStatus statusFilter) throws IOException {
@@ -400,17 +406,19 @@ public class DatasetExportService {
     // ─── geometry & file helpers ─────────────────────────────────────────────
 
     /**
-     * Parse geometry JSON string "[{"x":10,"y":20},...]" thành danh sách điểm [x, y].
+     * Parse geometry JSON string "[{"x":10,"y":20},...]" thành danh sách điểm [x,
+     * y].
      */
     private List<double[]> parseGeometry(String geometry) {
-        if (geometry == null || geometry.isBlank()) return List.of();
+        if (geometry == null || geometry.isBlank())
+            return List.of();
         try {
             JsonNode arr = objectMapper.readTree(geometry);
             List<double[]> pts = new ArrayList<>();
             arr.forEach(n -> {
                 double x = n.has("x") ? n.get("x").asDouble() : 0.0;
                 double y = n.has("y") ? n.get("y").asDouble() : 0.0;
-                pts.add(new double[]{x, y});
+                pts.add(new double[] { x, y });
             });
             return pts;
         } catch (Exception e) {
@@ -420,12 +428,13 @@ public class DatasetExportService {
 
     /** Tính bounding box [x_min, y_min, width, height] từ danh sách điểm. */
     private double[] pointsToBbox(List<double[]> pts) {
-        if (pts.isEmpty()) return new double[]{0, 0, 0, 0};
+        if (pts.isEmpty())
+            return new double[] { 0, 0, 0, 0 };
         double xMin = pts.stream().mapToDouble(p -> p[0]).min().getAsDouble();
         double yMin = pts.stream().mapToDouble(p -> p[1]).min().getAsDouble();
         double xMax = pts.stream().mapToDouble(p -> p[0]).max().getAsDouble();
         double yMax = pts.stream().mapToDouble(p -> p[1]).max().getAsDouble();
-        return new double[]{xMin, yMin, xMax - xMin, yMax - yMin};
+        return new double[] { xMin, yMin, xMax - xMin, yMax - yMin };
     }
 
     /** Build Pascal VOC XML string cho một ảnh. */
@@ -441,7 +450,8 @@ public class DatasetExportService {
         xml.append("  </size>\n");
         for (Reviewing r : anns) {
             List<double[]> pts = parseGeometry(r.getGeometry());
-            if (pts.isEmpty()) continue;
+            if (pts.isEmpty())
+                continue;
             double[] bbox = pointsToBbox(pts);
             xml.append("  <object>\n");
             xml.append("    <name>").append(escapeXml(r.getLabel().getLabelName())).append("</name>\n");
@@ -466,15 +476,13 @@ public class DatasetExportService {
      * Trả về null nếu file không tồn tại hoặc path không hợp lệ.
      */
     private byte[] readImageFile(String fileUrl) {
-        if (fileUrl == null) return null;
+        if (fileUrl == null)
+            return null;
         try {
-            String relative = fileUrl.startsWith("/") ? fileUrl.substring(1) : fileUrl;
-            // Security: path must remain inside the upload directory after normalization
-            Path resolved = Paths.get(relative).normalize();
-            if (!resolved.startsWith(Paths.get(uploadPath).normalize())) {
-                return null;
-            }
-            return Files.exists(resolved) ? Files.readAllBytes(resolved) : null;
+            String blobName = fileUrl.startsWith("/uploads/")
+                ? fileUrl.substring("/uploads/".length())
+                : fileUrl;
+            return azureBlobService.downloadFile(blobName);
         } catch (IOException e) {
             return null;
         }
@@ -482,7 +490,8 @@ public class DatasetExportService {
 
     /** Tách tên file không có phần mở rộng. */
     private String fileBaseName(String fileName) {
-        if (fileName == null) return "unknown";
+        if (fileName == null)
+            return "unknown";
         int dot = fileName.lastIndexOf('.');
         return dot > 0 ? fileName.substring(0, dot) : fileName;
     }
@@ -494,7 +503,8 @@ public class DatasetExportService {
 
     /** Escape XML special characters. */
     private String escapeXml(String s) {
-        if (s == null) return "";
+        if (s == null)
+            return "";
         return s.replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
