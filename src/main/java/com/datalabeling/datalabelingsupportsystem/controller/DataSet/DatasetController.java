@@ -117,4 +117,58 @@ public class DatasetController {
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .body(bytes);
     }
+
+    @Operation(summary = "Export dataset dạng COCO JSON",
+               description = "Trả về file JSON theo chuẩn COCO (info, images, annotations, categories). " +
+                             "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
+    @GetMapping("/datasets/{datasetId}/export/coco")
+    public ResponseEntity<byte[]> exportCoco(
+            @PathVariable Long datasetId,
+            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)")
+            @RequestParam(value = "status", required = false) ReviewingStatus status) throws java.io.IOException {
+
+        byte[] bytes = datasetExportService.buildCocoJson(datasetId, status);
+        String filename = "dataset_" + datasetId + "_coco.json";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(bytes);
+    }
+
+    @Operation(summary = "Export dataset dạng YOLO (ZIP)",
+               description = "Trả về ZIP chứa classes.txt, labels/*.txt (bbox normalize 0-1), images/*. " +
+                             "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
+    @GetMapping("/datasets/{datasetId}/export/yolo")
+    public ResponseEntity<byte[]> exportYolo(
+            @PathVariable Long datasetId,
+            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)")
+            @RequestParam(value = "status", required = false) ReviewingStatus status) throws java.io.IOException {
+
+        byte[] bytes = datasetExportService.buildYoloZip(datasetId, status);
+        String filename = "dataset_" + datasetId + "_yolo.zip";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .body(bytes);
+    }
+
+    @Operation(summary = "Export dataset dạng Pascal VOC (ZIP)",
+               description = "Trả về ZIP chứa Annotations/*.xml và JPEGImages/*. " +
+                             "Tham số status: APPROVED | PENDING | REJECTED | IMPROVED | ALL (mặc định ALL)")
+    @GetMapping("/datasets/{datasetId}/export/pascal-voc")
+    public ResponseEntity<byte[]> exportPascalVoc(
+            @PathVariable Long datasetId,
+            @Parameter(description = "Lọc annotation theo status (mặc định: ALL)")
+            @RequestParam(value = "status", required = false) ReviewingStatus status) throws java.io.IOException {
+
+        byte[] bytes = datasetExportService.buildPascalVocZip(datasetId, status);
+        String filename = "dataset_" + datasetId + "_pascal_voc.zip";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .body(bytes);
+    }
 }
