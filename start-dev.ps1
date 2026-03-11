@@ -2,8 +2,8 @@
 # Chay: .\start-dev.ps1
 
 $env:DATABASE_URL = "jdbc:postgresql://dpg-d6np6oshg0os73c93r50-a.singapore-postgres.render.com:5432/datalabeling"
-$env:DB_USERNAME  = "datalabeling_user"
-$env:DB_PASSWORD  = "gHxMAP0qunUnPAbwceIaGQUQPgCVr3uE"
+$env:DB_USERNAME = "datalabeling_user"
+$env:DB_PASSWORD = "gHxMAP0qunUnPAbwceIaGQUQPgCVr3uE"
 
 $env:AZURE_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=datalabelstore;AccountKey=yxwlHqiy7ee8vqoNsty5SKdg/"
 $env:AZURE_STORAGE_CONTAINER = "uploads"

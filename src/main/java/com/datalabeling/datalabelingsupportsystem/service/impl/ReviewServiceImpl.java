@@ -119,6 +119,7 @@ public class ReviewServiceImpl implements ReviewService {
 
                 return AnnotationWorkspaceResponse.builder()
                                 .assignmentId(assignmentId)
+                                .projectId(assignment.getProject().getProjectId())
                                 .projectName(assignment.getProject().getName())
                                 .dataType(assignment.getProject().getDataType())
                                 .items(itemResponses)
@@ -221,7 +222,8 @@ public class ReviewServiceImpl implements ReviewService {
                 }
 
                 if (assignment.getStatus() != AssignmentStatus.SUBMITTED
-                                && assignment.getStatus() != AssignmentStatus.REJECTED) {
+                                && assignment.getStatus() != AssignmentStatus.REJECTED
+                                && assignment.getStatus() != AssignmentStatus.APPROVED) {
                         throw new ValidationException("Assignment is not in a reviewable state. Current status: "
                                         + assignment.getStatus());
                 }

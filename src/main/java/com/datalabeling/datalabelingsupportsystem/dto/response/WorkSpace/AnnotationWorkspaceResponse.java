@@ -11,6 +11,7 @@ import java.util.List;
 @Builder
 public class AnnotationWorkspaceResponse {
     private Long assignmentId;
+    private Long projectId;
     private String projectName;
     private String dataType;
     private List<DataItemResponse> items;

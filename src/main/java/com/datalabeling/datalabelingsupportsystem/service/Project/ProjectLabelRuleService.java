@@ -26,6 +26,7 @@ public class ProjectLabelRuleService {
     private final LabelRuleRepository labelRuleRepository;
 
     /** Returns label rules currently linked to a project. */
+    @Transactional(readOnly = true)
     public List<LabelRuleResponse> getProjectLabelRules(Long projectId) {
         return projectLabelRuleRepository.findByProject_ProjectId(projectId)
                 .stream()

@@ -130,6 +130,7 @@ public class AnnotationServiceImpl implements AnnotationService {
 
                 return AnnotationWorkspaceResponse.builder()
                                 .assignmentId(assignmentId)
+                                .projectId(assignment.getProject().getProjectId())
                                 .projectName(assignment.getProject().getName())
                                 .dataType(assignment.getProject().getDataType())
                                 .items(itemResponses)
