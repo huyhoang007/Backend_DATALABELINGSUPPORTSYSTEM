@@ -23,7 +23,7 @@ public class LabelRuleController {
     private final LabelRuleService labelRuleService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER','ANNOTATOR','REVIEWER')")
     @Operation(summary = "Get all label rules")
     public ResponseEntity<java.util.List<LabelRuleResponse>> getAllRules() {
         return ResponseEntity.ok(labelRuleService.getAllRules());
@@ -38,7 +38,7 @@ public class LabelRuleController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER','ANNOTATOR','REVIEWER')")
     @Operation(summary = "Get label rule by id")
     public ResponseEntity<LabelRuleResponse> getRule(@PathVariable Long id) {
         return ResponseEntity.ok(labelRuleService.getById(id));

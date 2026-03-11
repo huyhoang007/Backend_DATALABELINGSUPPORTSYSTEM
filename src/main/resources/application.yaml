@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/DataLabeling}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:thubinh}
+    url: jdbc:postgresql://dpg-d6np6oshg0os73c93r50-a.singapore-postgres.render.com:5432/datalabeling
+    username: datalabeling_user
+    password: gHxMAP0qunUnPAbwceIaGQUQPgCVr3uE
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -26,12 +26,7 @@ spring:
   # Serve static files từ thư mục uploads
   web:
     resources:
-      static-locations: classpath:/static/
-
-azure:
-  storage:
-    connection-string: ${AZURE_STORAGE_CONNECTION_STRING:}
-    container-name: ${AZURE_STORAGE_CONTAINER:uploads}
+      static-locations: classpath:/static/,file:uploads/
 
 logging:
   level:
