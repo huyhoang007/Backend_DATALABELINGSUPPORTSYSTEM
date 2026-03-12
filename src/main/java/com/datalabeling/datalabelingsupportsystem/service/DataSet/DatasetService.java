@@ -36,8 +36,6 @@ public class DatasetService {
     private final ProjectRepository projectRepository;
     private final AzureBlobService azureBlobService;
 
-    // ===================== GROUP A =====================
-
     /**
      * POST /projects/{id}/datasets
      * Tạo Dataset mới với status PENDING và bulk insert DataItems
@@ -95,7 +93,6 @@ public class DatasetService {
                 .collect(Collectors.toList());
     }
 
-    // ===================== GROUP B =====================
 
     /**
      * PATCH /datasets/{id}
@@ -147,7 +144,6 @@ public class DatasetService {
         dataItemRepository.save(item);
     }
 
-    // ===================== HELPER METHODS =====================
 
     private List<DataItem> uploadAndCreateItems(List<MultipartFile> files, Dataset dataset) throws IOException {
         List<DataItem> items = new ArrayList<>();

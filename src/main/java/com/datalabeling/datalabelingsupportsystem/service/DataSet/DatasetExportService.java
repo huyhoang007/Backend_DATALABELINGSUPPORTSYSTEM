@@ -24,9 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -245,8 +242,10 @@ public class DatasetExportService {
         int annotId = 1;
         for (DataItem item : items) {
             int imageId = itemToImgId.get(item.getItemId());
+            double cocoImgW = (item.getWidth() != null && item.getWidth() > 0) ? item.getWidth() : 1.0;
+            double cocoImgH = (item.getHeight() != null && item.getHeight() > 0) ? item.getHeight() : 1.0;
             for (Reviewing r : byItem.getOrDefault(item.getItemId(), List.of())) {
-                List<double[]> pts = parseGeometry(r.getGeometry());
+                List<double[]> pts = parseGeometry(r.getGeometry(), cocoImgW, cocoImgH);
                 double[] bbox = pointsToBbox(pts);
                 double area = bbox[2] * bbox[3];
 
@@ -332,7 +331,7 @@ public class DatasetExportService {
 
                 StringBuilder labelContent = new StringBuilder();
                 for (Reviewing r : byItem.getOrDefault(item.getItemId(), List.of())) {
-                    List<double[]> pts = parseGeometry(r.getGeometry());
+                    List<double[]> pts = parseGeometry(r.getGeometry(), imgW, imgH);
                     if (pts.isEmpty())
                         continue;
                     double[] bbox = pointsToBbox(pts);
@@ -406,20 +405,46 @@ public class DatasetExportService {
     // ─── geometry & file helpers ─────────────────────────────────────────────
 
     /**
-     * Parse geometry JSON string "[{"x":10,"y":20},...]" thành danh sách điểm [x,
-     * y].
+     * Parse geometry JSON string thành danh sách điểm [x, y] theo pixel.
+     * Hỗ trợ định dạng frontend (tọa độ normalized 0..1):
+     *   BBOX:    {"type":"bbox","x":0.1,"y":0.2,"w":0.3,"h":0.4}
+     *   Polygon: {"type":"polygon","points":[{"x":0.1,"y":0.2},...]}
+     *   Legacy:  [{"x":10,"y":20},...] (pixel coords)
      */
-    private List<double[]> parseGeometry(String geometry) {
+    private List<double[]> parseGeometry(String geometry, double imgW, double imgH) {
         if (geometry == null || geometry.isBlank())
             return List.of();
         try {
-            JsonNode arr = objectMapper.readTree(geometry);
+            JsonNode node = objectMapper.readTree(geometry);
             List<double[]> pts = new ArrayList<>();
-            arr.forEach(n -> {
-                double x = n.has("x") ? n.get("x").asDouble() : 0.0;
-                double y = n.has("y") ? n.get("y").asDouble() : 0.0;
-                pts.add(new double[] { x, y });
-            });
+            if (node.isObject()) {
+                String type = node.has("type") ? node.get("type").asText("") : "";
+                if ("bbox".equalsIgnoreCase(type)) {
+                    double x = node.has("x") ? node.get("x").asDouble() : 0;
+                    double y = node.has("y") ? node.get("y").asDouble() : 0;
+                    double w = node.has("w") ? node.get("w").asDouble() : 0;
+                    double h = node.has("h") ? node.get("h").asDouble() : 0;
+                    double x1 = x * imgW, y1 = y * imgH;
+                    double x2 = (x + w) * imgW, y2 = (y + h) * imgH;
+                    pts.add(new double[]{x1, y1});
+                    pts.add(new double[]{x2, y1});
+                    pts.add(new double[]{x2, y2});
+                    pts.add(new double[]{x1, y2});
+                } else if (node.has("points") && node.get("points").isArray()) {
+                    node.get("points").forEach(p -> {
+                        double px = p.has("x") ? p.get("x").asDouble() : 0;
+                        double py = p.has("y") ? p.get("y").asDouble() : 0;
+                        pts.add(new double[]{px * imgW, py * imgH});
+                    });
+                }
+            } else if (node.isArray()) {
+                // Legacy: array of {x, y} pixel coords
+                node.forEach(n -> {
+                    double x = n.has("x") ? n.get("x").asDouble() : 0.0;
+                    double y = n.has("y") ? n.get("y").asDouble() : 0.0;
+                    pts.add(new double[]{x, y});
+                });
+            }
             return pts;
         } catch (Exception e) {
             return List.of();
@@ -449,7 +474,7 @@ public class DatasetExportService {
         xml.append("    <depth>3</depth>\n");
         xml.append("  </size>\n");
         for (Reviewing r : anns) {
-            List<double[]> pts = parseGeometry(r.getGeometry());
+            List<double[]> pts = parseGeometry(r.getGeometry(), width, height);
             if (pts.isEmpty())
                 continue;
             double[] bbox = pointsToBbox(pts);
