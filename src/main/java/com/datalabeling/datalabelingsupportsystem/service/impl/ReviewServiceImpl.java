@@ -14,6 +14,7 @@ import com.datalabeling.datalabelingsupportsystem.exception.ValidationException;
 import com.datalabeling.datalabelingsupportsystem.pojo.*;
 import com.datalabeling.datalabelingsupportsystem.repository.Assignment.AssignmentRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DataItemRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DatasetRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRuleRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Labeling.ReviewingRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Policy.PolicyRepository;
@@ -34,6 +35,7 @@ public class ReviewServiceImpl implements ReviewService {
         private final AssignmentRepository assignmentRepository;
         private final ReviewingRepository reviewingRepository;
         private final DataItemRepository dataItemRepository;
+        private final DatasetRepository datasetRepository;
         private final LabelRuleRepository labelRuleRepository;
         private final UserRepository userRepository;
         private final PolicyRepository policyRepository;
@@ -170,7 +172,7 @@ public class ReviewServiceImpl implements ReviewService {
                 Reviewing reviewing = reviewingRepository.findById(reviewingId)
                                 .orElseThrow(() -> new ResourceNotFoundException("Annotation not found"));
 
-                Assignment assignment = getAssignment(reviewerId, reviewing);
+                getAssignment(reviewerId, reviewing);
 
                 // cập nhật trạng thái và policy
                 if (Boolean.TRUE.equals(request.getHasError())) {
@@ -181,28 +183,10 @@ public class ReviewServiceImpl implements ReviewService {
                                         .orElseThrow(() -> new ResourceNotFoundException("Policy not found"));
                         reviewing.setPolicy(policy);
                         reviewing.setStatus(ReviewingStatus.REJECTED);
-
-                        // khi một annotation bị từ chối, assignment ngay lập tức bị REJECTED
-                        assignment.setStatus(AssignmentStatus.REJECTED);
-                        assignmentRepository.save(assignment);
                 } else {
                         // không có lỗi: approve
                         reviewing.setPolicy(null);
                         reviewing.setStatus(ReviewingStatus.APPROVED);
-
-                        // ✅ Chỉ set APPROVED khi TẤT CẢ annotation đã được review VÀ không có cái nào
-                        // bị reject
-                        List<Reviewing> allReviewings = reviewingRepository
-                                        .findByAssignment_AssignmentId(assignment.getAssignmentId());
-                        boolean anyRejected = allReviewings.stream()
-                                        .anyMatch(r -> r.getStatus() == ReviewingStatus.REJECTED);
-                        boolean allReviewed = allReviewings.stream()
-                                        .allMatch(r -> r.getStatus() == ReviewingStatus.APPROVED
-                                                        || r.getStatus() == ReviewingStatus.REJECTED);
-                        if (allReviewed && !anyRejected) {
-                                assignment.setStatus(AssignmentStatus.APPROVED);
-                                assignmentRepository.save(assignment);
-                        }
                 }
 
                 // gán reviewer và lưu
@@ -263,15 +247,37 @@ public class ReviewServiceImpl implements ReviewService {
                         return;
                 }
 
-                List<Assignment> projectAssignments = assignmentRepository
-                                .findByProject_ProjectId(project.getProjectId());
-                if (projectAssignments.isEmpty()) {
+                List<Dataset> projectDatasets = datasetRepository.findByProject_ProjectId(project.getProjectId());
+                if (projectDatasets.isEmpty()) {
                         return;
                 }
 
-                boolean allAssignmentsApproved = projectAssignments.stream()
-                                .allMatch(a -> a.getStatus() == AssignmentStatus.APPROVED);
-                String targetStatus = allAssignmentsApproved ? "COMPLETED" : "IN_PROGRESS";
+                List<Assignment> projectAssignments = assignmentRepository
+                                .findByProject_ProjectId(project.getProjectId());
+                if (projectAssignments.isEmpty()) {
+                        if (!"IN_PROGRESS".equals(project.getStatus())) {
+                                project.setStatus("IN_PROGRESS");
+                                projectRepository.save(project);
+                        }
+                        return;
+                }
+
+                boolean allBatchesApproved = projectDatasets.stream().allMatch(dataset -> {
+                        List<Assignment> datasetAssignments = projectAssignments.stream()
+                                        .filter(a -> a.getDataset() != null
+                                                        && dataset.getDatasetId().equals(a.getDataset().getDatasetId()))
+                                        .toList();
+
+                        // Batch chưa được phân công thì chưa thể hoàn thành project.
+                        if (datasetAssignments.isEmpty()) {
+                                return false;
+                        }
+
+                        return datasetAssignments.stream()
+                                        .allMatch(a -> a.getStatus() == AssignmentStatus.APPROVED);
+                });
+
+                String targetStatus = allBatchesApproved ? "COMPLETED" : "IN_PROGRESS";
 
                 if (!targetStatus.equals(project.getStatus())) {
                         project.setStatus(targetStatus);
