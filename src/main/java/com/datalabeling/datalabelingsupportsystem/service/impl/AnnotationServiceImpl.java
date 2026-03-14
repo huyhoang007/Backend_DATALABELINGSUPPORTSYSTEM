@@ -278,6 +278,16 @@ public class AnnotationServiceImpl implements AnnotationService {
                                         "Please add at least one annotation before submitting");
                 }
 
+                // Kiểm tra mỗi data item phải có ít nhất 1 nhãn
+                long totalItems = dataItemRepository
+                                .countByDataset_DatasetIdAndIsActiveTrue(
+                                                assignment.getDataset().getDatasetId());
+                long annotatedItems = reviewingRepository.countAnnotatedItems(assignmentId);
+                if (totalItems > 0 && annotatedItems < totalItems) {
+                        throw new ValidationException(
+                                        "Please label all items before submitting (" + annotatedItems + " / " + totalItems + ")");
+                }
+
                 assignment.setStatus(AssignmentStatus.SUBMITTED);
                 assignment.setCompletedAt(LocalDateTime.now());
                 assignmentRepository.save(assignment);
