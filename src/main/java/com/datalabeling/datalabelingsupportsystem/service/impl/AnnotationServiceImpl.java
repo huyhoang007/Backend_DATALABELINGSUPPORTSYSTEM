@@ -19,6 +19,7 @@ import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DataItemRep
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRuleRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Labeling.ReviewingRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
 import com.datalabeling.datalabelingsupportsystem.service.Labeling.AnnotationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class AnnotationServiceImpl implements AnnotationService {
         private final LabelRepository labelRepository;
         private final LabelRuleRepository labelRuleRepository;
         private final ObjectMapper objectMapper;
+        private final ProjectRepository projectRepository;
 
         // 1. LẤY DANH SÁCH TASK CỦA ANNOTATOR
         @Override
@@ -76,6 +78,10 @@ public class AnnotationServiceImpl implements AnnotationService {
                 if (assignment.getStatus() == AssignmentStatus.PENDING) {
                         assignment.setStatus(AssignmentStatus.IN_PROGRESS);
                         assignmentRepository.save(assignment);
+                        syncProjectToInProgress(assignment.getProject());
+                } else if (assignment.getStatus() == AssignmentStatus.IN_PROGRESS
+                                || assignment.getStatus() == AssignmentStatus.REJECTED) {
+                        syncProjectToInProgress(assignment.getProject());
                 }
 
                 List<DataItem> items = dataItemRepository
@@ -158,11 +164,12 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 && assignment.getStatus() != AssignmentStatus.PENDING) {
                         throw new ValidationException(
                                         "Can only edit annotations when assignment is IN_PROGRESS. " +
-                                        "If assignment is REJECTED, use the fix-rejected endpoint.");
+                                                        "If assignment is REJECTED, use the fix-rejected endpoint.");
                 }
 
                 if (assignment.getStatus() == AssignmentStatus.PENDING) {
                         assignment.setStatus(AssignmentStatus.IN_PROGRESS);
+                        syncProjectToInProgress(assignment.getProject());
                 }
 
                 DataItem item = dataItemRepository.findById(request.getItemId())
@@ -198,7 +205,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                 if (assignment.getStatus() != AssignmentStatus.REJECTED) {
                         throw new ValidationException(
                                         "This endpoint is only for fixing rejected assignments. " +
-                                        "Current status: " + assignment.getStatus());
+                                                        "Current status: " + assignment.getStatus());
                 }
 
                 DataItem item = dataItemRepository.findById(request.getItemId())
@@ -213,9 +220,11 @@ public class AnnotationServiceImpl implements AnnotationService {
                 List<Reviewing> newReviews = buildReviews(request, assignment, item, true);
                 newReviews = reviewingRepository.saveAll(newReviews);
 
-                // Chuyển assignment → IN_PROGRESS để annotator có thể tiếp tục sửa các item khác
+                // Chuyển assignment → IN_PROGRESS để annotator có thể tiếp tục sửa các item
+                // khác
                 assignment.setStatus(AssignmentStatus.IN_PROGRESS);
                 assignmentRepository.save(assignment);
+                syncProjectToInProgress(assignment.getProject());
 
                 updateProgress(assignment);
 
@@ -332,11 +341,22 @@ public class AnnotationServiceImpl implements AnnotationService {
                 assignmentRepository.save(assignment);
         }
 
+        private void syncProjectToInProgress(Project project) {
+                if (project == null || "COMPLETED".equals(project.getStatus())
+                                || "IN_PROGRESS".equals(project.getStatus())) {
+                        return;
+                }
+
+                project.setStatus("IN_PROGRESS");
+                projectRepository.save(project);
+        }
+
         /**
          * Convert JsonNode (object từ frontend) hoặc null → String để lưu DB
          */
         private String convertGeometry(JsonNode geometry) {
-                if (geometry == null || geometry.isNull()) return null;
+                if (geometry == null || geometry.isNull())
+                        return null;
                 try {
                         return objectMapper.writeValueAsString(geometry);
                 } catch (Exception e) {

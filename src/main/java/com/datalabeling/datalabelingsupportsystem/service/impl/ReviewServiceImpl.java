@@ -17,6 +17,7 @@ import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DataItemRep
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRuleRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Labeling.ReviewingRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Policy.PolicyRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
 import com.datalabeling.datalabelingsupportsystem.service.Labeling.ReviewService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class ReviewServiceImpl implements ReviewService {
         private final LabelRuleRepository labelRuleRepository;
         private final UserRepository userRepository;
         private final PolicyRepository policyRepository;
+        private final ProjectRepository projectRepository;
 
         @Override
         public List<AnnotatorAssignmentResponse> getMyReviewAssignments(Long reviewerId) {
@@ -242,10 +244,39 @@ public class ReviewServiceImpl implements ReviewService {
                                                         + " annotation chưa được đánh giá. Vui lòng xét hết trước khi nộp.");
                 }
 
-                boolean anyRejected = allReviewings.stream()
-                                .anyMatch(r -> r.getStatus() == ReviewingStatus.REJECTED);
-                assignment.setStatus(anyRejected ? AssignmentStatus.REJECTED : AssignmentStatus.APPROVED);
+                long rejectedCount = allReviewings.stream()
+                                .filter(r -> r.getStatus() == ReviewingStatus.REJECTED)
+                                .count();
+                if (rejectedCount > 0) {
+                        throw new ValidationException(
+                                        "Không thể submit review vì còn " + rejectedCount
+                                                        + " annotation bị từ chối. Tất cả label phải ở trạng thái APPROVED trước khi nộp.");
+                }
+
+                assignment.setStatus(AssignmentStatus.APPROVED);
                 assignmentRepository.save(assignment);
+                syncProjectStatusAfterReview(assignment.getProject());
+        }
+
+        private void syncProjectStatusAfterReview(Project project) {
+                if (project == null) {
+                        return;
+                }
+
+                List<Assignment> projectAssignments = assignmentRepository
+                                .findByProject_ProjectId(project.getProjectId());
+                if (projectAssignments.isEmpty()) {
+                        return;
+                }
+
+                boolean allAssignmentsApproved = projectAssignments.stream()
+                                .allMatch(a -> a.getStatus() == AssignmentStatus.APPROVED);
+                String targetStatus = allAssignmentsApproved ? "COMPLETED" : "IN_PROGRESS";
+
+                if (!targetStatus.equals(project.getStatus())) {
+                        project.setStatus(targetStatus);
+                        projectRepository.save(project);
+                }
         }
 
         private static Assignment getAssignment(Long reviewerId, Reviewing reviewing) {
