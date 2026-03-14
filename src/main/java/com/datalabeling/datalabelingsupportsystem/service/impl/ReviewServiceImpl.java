@@ -231,13 +231,13 @@ public class ReviewServiceImpl implements ReviewService {
                 long rejectedCount = allReviewings.stream()
                                 .filter(r -> r.getStatus() == ReviewingStatus.REJECTED)
                                 .count();
-                if (rejectedCount > 0) {
-                        throw new ValidationException(
-                                        "Không thể submit review vì còn " + rejectedCount
-                                                        + " annotation bị từ chối. Tất cả label phải ở trạng thái APPROVED trước khi nộp.");
-                }
 
-                assignment.setStatus(AssignmentStatus.APPROVED);
+                // Set status dựa trên kết quả review
+                if (rejectedCount > 0) {
+                        assignment.setStatus(AssignmentStatus.REJECTED);
+                } else {
+                        assignment.setStatus(AssignmentStatus.APPROVED);
+                }
                 assignmentRepository.save(assignment);
                 syncProjectStatusAfterReview(assignment.getProject());
         }

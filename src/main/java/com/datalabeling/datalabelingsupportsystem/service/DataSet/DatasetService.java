@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -152,38 +154,72 @@ public class DatasetService {
             if (file.isEmpty()) continue;
 
             String originalFilename = file.getOriginalFilename();
-            String extension = (originalFilename != null && originalFilename.contains("."))
-                    ? originalFilename.substring(originalFilename.lastIndexOf("."))
-                    : "";
-            String newFileName = UUID.randomUUID() + extension;
-            String blobName = "project_" + dataset.getProject().getProjectId() + "/" + newFileName;
-
             String contentType = file.getContentType();
-            byte[] fileBytes = file.getBytes();
 
-            // Upload lên Azure Blob (hoặc local disk nếu dev)
-            azureBlobService.uploadFile(blobName, fileBytes, contentType != null ? contentType : "application/octet-stream");
-
-            // Đọc width/height
-            Integer width = null, height = null;
-            if (contentType != null && contentType.startsWith("image/")) {
-                try {
-                    BufferedImage img = ImageIO.read(new java.io.ByteArrayInputStream(fileBytes));
-                    if (img != null) { width = img.getWidth(); height = img.getHeight(); }
-                } catch (IOException ignored) {}
+            // Kiểm tra nếu là file ZIP
+            if (contentType != null && contentType.equals("application/zip") ||
+                (originalFilename != null && originalFilename.toLowerCase().endsWith(".zip"))) {
+                // Giải nén ZIP và xử lý các file bên trong
+                try (ZipInputStream zis = new ZipInputStream(file.getInputStream())) {
+                    ZipEntry entry;
+                    while ((entry = zis.getNextEntry()) != null) {
+                        if (!entry.isDirectory()) {
+                            String entryName = entry.getName();
+                            byte[] entryBytes = zis.readAllBytes();
+                            processFile(entryName, entryBytes, dataset, items);
+                        }
+                        zis.closeEntry();
+                    }
+                }
+            } else {
+                // Xử lý file bình thường
+                byte[] fileBytes = file.getBytes();
+                processFile(originalFilename, fileBytes, dataset, items);
             }
-
-            items.add(DataItem.builder()
-                    .dataset(dataset)
-                    .fileUrl("/uploads/" + blobName)
-                    .fileName(originalFilename)
-                    .fileType(resolveFileType(contentType))
-                    .width(width)
-                    .height(height)
-                    .isActive(true)
-                    .build());
         }
         return items;
+    }
+
+    private void processFile(String fileName, byte[] fileBytes, Dataset dataset, List<DataItem> items) throws IOException {
+        String extension = (fileName != null && fileName.contains("."))
+                ? fileName.substring(fileName.lastIndexOf("."))
+                : "";
+        String newFileName = UUID.randomUUID() + extension;
+        String blobName = "project_" + dataset.getProject().getProjectId() + "/" + newFileName;
+
+        String contentType = resolveContentType(extension);
+
+        // Upload lên Azure Blob (hoặc local disk nếu dev)
+        azureBlobService.uploadFile(blobName, fileBytes, contentType);
+
+        // Đọc width/height cho image
+        Integer width = null, height = null;
+        if (contentType.startsWith("image/")) {
+            try {
+                BufferedImage img = ImageIO.read(new java.io.ByteArrayInputStream(fileBytes));
+                if (img != null) { width = img.getWidth(); height = img.getHeight(); }
+            } catch (IOException ignored) {}
+        }
+
+        items.add(DataItem.builder()
+                .dataset(dataset)
+                .fileUrl("/uploads/" + blobName)
+                .fileName(fileName)
+                .fileType(resolveFileType(contentType))
+                .width(width)
+                .height(height)
+                .isActive(true)
+                .build());
+    }
+
+    private String resolveContentType(String extension) {
+        return switch (extension.toLowerCase()) {
+            case ".jpg", ".jpeg" -> "image/jpeg";
+            case ".png" -> "image/png";
+            case ".pdf" -> "application/pdf";
+            case ".csv" -> "text/csv";
+            default -> "application/octet-stream";
+        };
     }
 
     private String resolveFileType(String contentType) {
