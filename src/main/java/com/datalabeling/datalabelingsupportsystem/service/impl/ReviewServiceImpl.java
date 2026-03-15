@@ -69,8 +69,9 @@ public class ReviewServiceImpl implements ReviewService {
                         throw new ValidationException("Access denied: not assigned reviewer");
                 }
 
-                // Assignment phải ở trạng thái SUBMITTED hoặc REJECTED để review
+                // Assignment phải ở trạng thái SUBMITTED, RE_SUBMITTED hoặc REJECTED để review
                 if (!(assignment.getStatus() == AssignmentStatus.SUBMITTED
+                                || assignment.getStatus() == AssignmentStatus.RE_SUBMITTED
                                 || assignment.getStatus() == AssignmentStatus.REJECTED)) {
                         throw new ValidationException("Assignment is not ready for review");
                 }
@@ -208,6 +209,7 @@ public class ReviewServiceImpl implements ReviewService {
                 }
 
                 if (assignment.getStatus() != AssignmentStatus.SUBMITTED
+                                && assignment.getStatus() != AssignmentStatus.RE_SUBMITTED
                                 && assignment.getStatus() != AssignmentStatus.REJECTED
                                 && assignment.getStatus() != AssignmentStatus.APPROVED) {
                         throw new ValidationException("Assignment is not in a reviewable state. Current status: "
@@ -228,18 +230,16 @@ public class ReviewServiceImpl implements ReviewService {
                                                         + " annotation chưa được đánh giá. Vui lòng xét hết trước khi nộp.");
                 }
 
+                // Nếu có annotation bị REJECTED → gán trạng thái REJECTED để annotator sửa lại
                 long rejectedCount = allReviewings.stream()
                                 .filter(r -> r.getStatus() == ReviewingStatus.REJECTED)
                                 .count();
-                if (rejectedCount > 0) {
-                        throw new ValidationException(
-                                        "Không thể submit review vì còn " + rejectedCount
-                                                        + " annotation bị từ chối. Tất cả label phải ở trạng thái APPROVED trước khi nộp.");
-                }
 
-                assignment.setStatus(AssignmentStatus.APPROVED);
+                assignment.setStatus(rejectedCount > 0 ? AssignmentStatus.REJECTED : AssignmentStatus.APPROVED);
                 assignmentRepository.save(assignment);
-                syncProjectStatusAfterReview(assignment.getProject());
+                if (rejectedCount == 0) {
+                        syncProjectStatusAfterReview(assignment.getProject());
+                }
         }
 
         private void syncProjectStatusAfterReview(Project project) {
@@ -292,8 +292,9 @@ public class ReviewServiceImpl implements ReviewService {
                         throw new ValidationException("Access denied: only assigned reviewer can review");
                 }
 
-                // assignment phải đang ở trạng thái SUBMITTED hoặc REJECTED để review
+                // assignment phải đang ở trạng thái SUBMITTED, RE_SUBMITTED hoặc REJECTED để review
                 if (!(assignment.getStatus() == AssignmentStatus.SUBMITTED
+                                || assignment.getStatus() == AssignmentStatus.RE_SUBMITTED
                                 || assignment.getStatus() == AssignmentStatus.REJECTED)) {
                         throw new ValidationException("Assignment is not ready for review");
                 }

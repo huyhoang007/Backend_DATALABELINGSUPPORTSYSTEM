@@ -14,6 +14,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import io.jsonwebtoken.JwtException;
+
 import java.util.List;
 
 @Component
@@ -42,18 +44,22 @@ public class JwtFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String jwt = authHeader.substring(7);
-            String username = jwtService.extractUsername(jwt);
+            try {
+                String username = jwtService.extractUsername(jwt);
 
-            User user = userRepository.findByUsername(username).orElse(null);
+                User user = userRepository.findByUsername(username).orElse(null);
 
-            if (user != null) {
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        user, 
-                        null,
-                        user.getAuthorities() 
-                );
-
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                if (user != null) {
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                            user,
+                            null,
+                            user.getAuthorities()
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            } catch (JwtException e) {
+                // Token hết hạn hoặc không hợp lệ — để Spring Security trả về 401
+                logger.warn("Invalid or expired JWT token: " + e.getMessage());
             }
         }
 

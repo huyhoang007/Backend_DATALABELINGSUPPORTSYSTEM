@@ -83,6 +83,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 || assignment.getStatus() == AssignmentStatus.REJECTED) {
                         syncProjectToInProgress(assignment.getProject());
                 }
+                // RE_SUBMITTED: workspace mở read-only, không đổi status
 
                 List<DataItem> items = dataItemRepository
                                 .findByDataset_DatasetId(assignment.getDataset().getDatasetId());
@@ -220,11 +221,8 @@ public class AnnotationServiceImpl implements AnnotationService {
                 List<Reviewing> newReviews = buildReviews(request, assignment, item, true);
                 newReviews = reviewingRepository.saveAll(newReviews);
 
-                // Chuyển assignment → IN_PROGRESS để annotator có thể tiếp tục sửa các item
-                // khác
-                assignment.setStatus(AssignmentStatus.IN_PROGRESS);
-                assignmentRepository.save(assignment);
-                syncProjectToInProgress(assignment.getProject());
+                // Giữ nguyên trạng thái REJECTED cho đến khi annotator submit lại.
+                // Không đổi sang IN_PROGRESS để tránh lỗi khi sửa nhiều item liên tiếp.
 
                 updateProgress(assignment);
 
@@ -260,6 +258,8 @@ public class AnnotationServiceImpl implements AnnotationService {
                 switch (assignment.getStatus()) {
                         case SUBMITTED ->
                                 throw new ValidationException("Assignment is already submitted");
+                        case RE_SUBMITTED ->
+                                throw new ValidationException("Assignment is already submitted for re-review");
                         case APPROVED ->
                                 throw new ValidationException("Assignment is already approved");
                         case PENDING ->
@@ -288,7 +288,13 @@ public class AnnotationServiceImpl implements AnnotationService {
                                         "Please label all items before submitting (" + annotatedItems + " / " + totalItems + ")");
                 }
 
-                assignment.setStatus(AssignmentStatus.SUBMITTED);
+                // Nếu có annotation isImproved=true → đây là lần nộp lại sau khi bị REJECTED
+                boolean isResubmission = reviewingRepository
+                                .findByAssignment_AssignmentId(assignmentId)
+                                .stream()
+                                .anyMatch(r -> Boolean.TRUE.equals(r.getIsImproved()));
+
+                assignment.setStatus(isResubmission ? AssignmentStatus.RE_SUBMITTED : AssignmentStatus.SUBMITTED);
                 assignment.setCompletedAt(LocalDateTime.now());
                 assignmentRepository.save(assignment);
         }
