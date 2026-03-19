@@ -61,7 +61,7 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Update project status", description = "Update project status (ACTIVE, INACTIVE, COMPLETED)")
+    @Operation(summary = "Update project status", description = "Update project status (DRAFT, IN_PROGRESS, PAUSED, COMPLETED)")
     @PreAuthorize("hasRole('MANAGER')")
     @PatchMapping("/{projectId}/status")
     public ResponseEntity<ProjectResponse> updateProjectStatus(

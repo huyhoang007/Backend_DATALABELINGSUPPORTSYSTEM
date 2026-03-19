@@ -13,6 +13,8 @@ public class UpdateProjectRequest {
 
     private String description;
 
-    @Pattern(regexp = "ACTIVE|INACTIVE|COMPLETED", message = "Status must be ACTIVE, INACTIVE, or COMPLETED")
+    @Pattern(
+            regexp = "DRAFT|IN_PROGRESS|PAUSED|COMPLETED",
+            message = "Status must be DRAFT, IN_PROGRESS, PAUSED, or COMPLETED")
     private String status;
 }
