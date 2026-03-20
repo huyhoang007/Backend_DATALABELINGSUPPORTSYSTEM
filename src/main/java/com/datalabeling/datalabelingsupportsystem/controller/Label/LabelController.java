@@ -71,4 +71,12 @@ public class LabelController {
         labelService.deleteLabel(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasAnyRole('MANAGER')")
+    @Operation(summary = "Activate label")
+    public ResponseEntity<LabelResponse> activateLabel(@PathVariable Long id) {
+        LabelResponse response = labelService.activateLabel(id);
+        return ResponseEntity.ok(response);
+    }
 }

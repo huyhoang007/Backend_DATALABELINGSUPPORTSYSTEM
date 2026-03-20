@@ -86,6 +86,15 @@ public class LabelService {
         labelRepository.save(label);
     }
 
+    @Transactional
+    public LabelResponse activateLabel(Long id) {
+        Label label = labelRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Label not found"));
+        label.setIsActive(true);
+        Label updatedLabel = labelRepository.save(label);
+        return mapToResponse(updatedLabel);
+    }
+
     private LabelResponse mapToResponse(Label label) {
         return LabelResponse.builder()
                 .labelId(label.getLabelId())
