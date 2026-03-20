@@ -13,6 +13,12 @@ public class UpdateProjectRequest {
 
     private String description;
 
+    private String guidelineContent;
+
+    private String guidelineVersion;
+
+    private String guidelineFileUrl;
+
     @Pattern(
             regexp = "DRAFT|IN_PROGRESS|PAUSED|COMPLETED",
             message = "Status must be DRAFT, IN_PROGRESS, PAUSED, or COMPLETED")

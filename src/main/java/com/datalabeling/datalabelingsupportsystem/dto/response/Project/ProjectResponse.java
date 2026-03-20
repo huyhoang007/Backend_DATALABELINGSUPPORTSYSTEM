@@ -17,6 +17,9 @@ public class ProjectResponse {
     private String dataType;
     private String status;
     private String description;
+    private String guidelineContent;
+    private String guidelineVersion;
+    private String guidelineFileUrl;
     private String managerName;
     private Long managerId;
     private LocalDateTime createdAt;

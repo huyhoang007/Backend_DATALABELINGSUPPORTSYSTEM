@@ -15,4 +15,10 @@ public class CreateProjectRequest {
     private String dataType;
 
     private String description;
+
+    private String guidelineContent;
+
+    private String guidelineVersion;
+
+    private String guidelineFileUrl;
 }

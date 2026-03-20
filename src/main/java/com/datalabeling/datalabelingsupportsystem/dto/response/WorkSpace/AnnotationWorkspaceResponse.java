@@ -13,6 +13,9 @@ public class AnnotationWorkspaceResponse {
     private Long assignmentId;
     private Long projectId;
     private String projectName;
+    private String projectGuidelineContent;
+    private String projectGuidelineVersion;
+    private String projectGuidelineFileUrl;
     private String dataType;
     private List<DataItemResponse> items;
     private List<LabelGroupResponse> labelGroups;

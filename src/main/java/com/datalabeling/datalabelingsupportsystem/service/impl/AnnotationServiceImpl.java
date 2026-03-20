@@ -26,7 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -139,6 +141,9 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 .assignmentId(assignmentId)
                                 .projectId(assignment.getProject().getProjectId())
                                 .projectName(assignment.getProject().getName())
+                                .projectGuidelineContent(assignment.getProject().getGuidelineContent())
+                                .projectGuidelineVersion(assignment.getProject().getGuidelineVersion())
+                                .projectGuidelineFileUrl(assignment.getProject().getGuidelineFileUrl())
                                 .dataType(assignment.getProject().getDataType())
                                 .items(itemResponses)
                                 .labelGroups(labelGroups) // ✅ trả về theo nhóm
@@ -212,21 +217,54 @@ public class AnnotationServiceImpl implements AnnotationService {
                 DataItem item = dataItemRepository.findById(request.getItemId())
                                 .orElseThrow(() -> new ResourceNotFoundException("DataItem not found"));
 
-                // Xóa hết annotations cũ của item này (cả REJECTED lẫn APPROVED của item đó)
-                reviewingRepository.deleteAll(
-                                reviewingRepository.findByAssignment_AssignmentIdAndDataItem_ItemId(
-                                                assignmentId, item.getItemId()));
+                // Giữ lại các annotation đã APPROVED, chỉ thay thế phần chưa được duyệt.
+                List<Reviewing> existingReviews = reviewingRepository
+                                .findByAssignment_AssignmentIdAndDataItem_ItemId(assignmentId, item.getItemId());
 
-                // Lưu annotations mới với isImproved = true
-                List<Reviewing> newReviews = buildReviews(request, assignment, item, true);
-                newReviews = reviewingRepository.saveAll(newReviews);
+                Set<String> approvedGroupKeys = new HashSet<>();
+                existingReviews.stream()
+                                .filter(r -> r.getStatus() == ReviewingStatus.APPROVED)
+                                .forEach(r -> {
+                                        String groupKey = extractGroupKeyFromGeometryString(r.getGeometry());
+                                        if (groupKey != null && !groupKey.isBlank()) {
+                                                approvedGroupKeys.add(groupKey);
+                                        }
+                                });
+
+                List<Reviewing> toDelete = existingReviews.stream()
+                                .filter(r -> r.getStatus() != ReviewingStatus.APPROVED)
+                                .collect(Collectors.toList());
+                if (!toDelete.isEmpty()) {
+                        reviewingRepository.deleteAll(toDelete);
+                }
+
+                // Lưu annotations mới với isImproved = true, nhưng bỏ qua group đã APPROVED.
+                List<BatchSaveAnnotationRequest.AnnotationItem> annotationsToSave = request.getAnnotations().stream()
+                                .filter(ann -> {
+                                        String groupKey = extractGroupKeyFromGeometryNode(ann.getGeometry());
+                                        return groupKey == null || !approvedGroupKeys.contains(groupKey);
+                                })
+                                .collect(Collectors.toList());
+
+                List<Reviewing> newReviews = List.of();
+                if (!annotationsToSave.isEmpty()) {
+                        BatchSaveAnnotationRequest filteredRequest = new BatchSaveAnnotationRequest();
+                        filteredRequest.setItemId(request.getItemId());
+                        filteredRequest.setAnnotations(annotationsToSave);
+                        newReviews = buildReviews(filteredRequest, assignment, item, true);
+                        newReviews = reviewingRepository.saveAll(newReviews);
+                }
 
                 // Giữ nguyên trạng thái REJECTED cho đến khi annotator submit lại.
                 // Không đổi sang IN_PROGRESS để tránh lỗi khi sửa nhiều item liên tiếp.
 
                 updateProgress(assignment);
 
-                return newReviews.stream().map(this::toAnnotationResponse).collect(Collectors.toList());
+                return reviewingRepository
+                                .findByAssignment_AssignmentIdAndDataItem_ItemId(assignmentId, item.getItemId())
+                                .stream()
+                                .map(this::toAnnotationResponse)
+                                .collect(Collectors.toList());
         }
 
         // 4. LẤY ANNOTATIONS THEO ITEM
@@ -377,6 +415,25 @@ public class AnnotationServiceImpl implements AnnotationService {
                         return objectMapper.writeValueAsString(geometry);
                 } catch (Exception e) {
                         return geometry.toString();
+                }
+        }
+
+        private String extractGroupKeyFromGeometryNode(JsonNode geometry) {
+                if (geometry == null || geometry.isNull() || !geometry.hasNonNull("groupKey")) {
+                        return null;
+                }
+                return geometry.get("groupKey").asText();
+        }
+
+        private String extractGroupKeyFromGeometryString(String geometry) {
+                if (geometry == null || geometry.isBlank()) {
+                        return null;
+                }
+                try {
+                        JsonNode node = objectMapper.readTree(geometry);
+                        return extractGroupKeyFromGeometryNode(node);
+                } catch (Exception ignored) {
+                        return null;
                 }
         }
 

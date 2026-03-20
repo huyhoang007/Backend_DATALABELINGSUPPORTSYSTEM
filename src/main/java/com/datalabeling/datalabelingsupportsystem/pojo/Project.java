@@ -29,6 +29,15 @@ public class Project {
     
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "guideline_content", columnDefinition = "TEXT")
+    private String guidelineContent;
+
+    @Column(name = "guideline_version", length = 50)
+    private String guidelineVersion;
+
+    @Column(name = "guideline_file_url", columnDefinition = "TEXT")
+    private String guidelineFileUrl;
     
     private String status;
     

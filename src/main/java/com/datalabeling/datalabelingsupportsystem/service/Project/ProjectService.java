@@ -44,6 +44,9 @@ public class ProjectService {
                 .name(request.getName())
                 .dataType(request.getDataType())
                 .description(request.getDescription())
+                .guidelineContent(request.getGuidelineContent())
+                .guidelineVersion(request.getGuidelineVersion())
+                .guidelineFileUrl(request.getGuidelineFileUrl())
                 .status("DRAFT")
                 .manager(manager)
                 .createdAt(LocalDateTime.now())
@@ -199,6 +202,18 @@ public class ProjectService {
             project.setDescription(request.getDescription());
         }
 
+        if (request.getGuidelineContent() != null) {
+            project.setGuidelineContent(request.getGuidelineContent());
+        }
+
+        if (request.getGuidelineVersion() != null) {
+            project.setGuidelineVersion(request.getGuidelineVersion());
+        }
+
+        if (request.getGuidelineFileUrl() != null) {
+            project.setGuidelineFileUrl(request.getGuidelineFileUrl());
+        }
+
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             // Validate status
             if (!List.of("DRAFT", "IN_PROGRESS", "PAUSED", "COMPLETED").contains(request.getStatus())) {
@@ -223,6 +238,9 @@ public class ProjectService {
                 .dataType(project.getDataType())
                 .status(project.getStatus())
                 .description(project.getDescription())
+                .guidelineContent(project.getGuidelineContent())
+                .guidelineVersion(project.getGuidelineVersion())
+                .guidelineFileUrl(project.getGuidelineFileUrl())
                 .managerName(project.getManager().getFullName() != null
                         ? project.getManager().getFullName()
                         : project.getManager().getUsername())

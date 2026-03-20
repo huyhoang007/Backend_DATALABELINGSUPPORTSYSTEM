@@ -15,6 +15,7 @@ import com.datalabeling.datalabelingsupportsystem.pojo.*;
 import com.datalabeling.datalabelingsupportsystem.repository.Assignment.AssignmentRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DataItemRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DatasetRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRuleRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Labeling.ReviewingRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Policy.PolicyRepository;
@@ -36,6 +37,7 @@ public class ReviewServiceImpl implements ReviewService {
         private final ReviewingRepository reviewingRepository;
         private final DataItemRepository dataItemRepository;
         private final DatasetRepository datasetRepository;
+        private final LabelRepository labelRepository;
         private final LabelRuleRepository labelRuleRepository;
         private final UserRepository userRepository;
         private final PolicyRepository policyRepository;
@@ -79,6 +81,9 @@ public class ReviewServiceImpl implements ReviewService {
                 // Lấy danh sách items và annotations
                 List<DataItem> items = dataItemRepository
                                 .findByDataset_DatasetId(assignment.getDataset().getDatasetId());
+
+                List<String> guideUrls = labelRepository
+                                .findGuideUrlsByDatasetId(assignment.getDataset().getDatasetId());
 
                 List<DataItemResponse> itemResponses = items.stream()
                                 .map(item -> {
@@ -126,9 +131,13 @@ public class ReviewServiceImpl implements ReviewService {
                                 .assignmentId(assignmentId)
                                 .projectId(assignment.getProject().getProjectId())
                                 .projectName(assignment.getProject().getName())
+                                .projectGuidelineContent(assignment.getProject().getGuidelineContent())
+                                .projectGuidelineVersion(assignment.getProject().getGuidelineVersion())
+                                .projectGuidelineFileUrl(assignment.getProject().getGuidelineFileUrl())
                                 .dataType(assignment.getProject().getDataType())
                                 .items(itemResponses)
                                 .labelGroups(labelGroups)
+                                .labelGuideUrls(guideUrls)
                                 .progress(assignment.getProgress() != null ? assignment.getProgress() : 0)
                                 .assignmentStatus(assignment.getStatus().name())
                                 .build();
