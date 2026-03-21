@@ -73,10 +73,6 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Assignment not found or access denied"));
 
-                if (assignment.getStatus() == AssignmentStatus.APPROVED) {
-                        throw new ValidationException("Assignment is already approved");
-                }
-
                 if (assignment.getStatus() == AssignmentStatus.PENDING) {
                         assignment.setStatus(AssignmentStatus.IN_PROGRESS);
                         assignmentRepository.save(assignment);
@@ -85,7 +81,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 || assignment.getStatus() == AssignmentStatus.REJECTED) {
                         syncProjectToInProgress(assignment.getProject());
                 }
-                // RE_SUBMITTED: workspace mở read-only, không đổi status
+                // SUBMITTED, RE_SUBMITTED, APPROVED: workspace mở read-only, không đổi status
 
                 List<DataItem> items = dataItemRepository
                                 .findByDataset_DatasetId(assignment.getDataset().getDatasetId());
