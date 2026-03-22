@@ -10,6 +10,8 @@ import com.datalabeling.datalabelingsupportsystem.pojo.User;
 import com.datalabeling.datalabelingsupportsystem.repository.Assignment.AssignmentRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DatasetRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectLabelRuleRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Policy.ProjectPolicyRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,8 @@ public class AssignmentService {
     private final ProjectRepository projectRepository;
     private final DatasetRepository datasetRepository;
     private final UserRepository userRepository;
+    private final ProjectLabelRuleRepository projectLabelRuleRepository;
+    private final ProjectPolicyRepository projectPolicyRepository;
 
     /**
      * Manager tạo phân công: chọn dataset, annotator, reviewer
@@ -39,6 +43,17 @@ public class AssignmentService {
 
         if (!project.getManager().getUserId().equals(managerId)) {
             throw new RuntimeException("You are not the manager of this project");
+        }
+
+        // Kiểm tra project có label rules và policies
+        boolean hasLabelRules = !projectLabelRuleRepository.findByProject_ProjectId(projectId).isEmpty();
+        boolean hasPolicies = !projectPolicyRepository.findByProject(project).isEmpty();
+        
+        if (!hasLabelRules) {
+            throw new RuntimeException("Vui lòng thêm quy tắc gắn nhãn cho dự án này trước khi giao nhiệm vụ.");
+        }
+        if (!hasPolicies) {
+            throw new RuntimeException("Vui lòng thêm các lỗi vào dự án này trước khi giao nhiệm vụ.");
         }
 
         // Kiểm tra dataset thuộc project

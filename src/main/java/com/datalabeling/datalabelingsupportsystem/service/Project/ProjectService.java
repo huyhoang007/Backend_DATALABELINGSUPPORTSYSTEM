@@ -66,9 +66,8 @@ public class ProjectService {
 
         List<Project> projects = projectRepository.findByManagerUserId(manager.getUserId());
 
-        // Chỉ lấy các project có status hợp lệ (không lấy project INACTIVE - đã xóa mềm)
+        // Lấy tất cả projects (bao gồm INACTIVE) để hiện option kích hoạt lại
         return projects.stream()
-                .filter(project -> !"INACTIVE".equals(project.getStatus()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -150,9 +149,9 @@ public class ProjectService {
         if ("DRAFT".equals(currentStatus)) {
             return "IN_PROGRESS".equals(newStatus);
         }
-        // IN_PROGRESS có thể chuyển sang PAUSED hoặc COMPLETED
+        // IN_PROGRESS có thể chuyển sang PAUSED
         if ("IN_PROGRESS".equals(currentStatus)) {
-            return "PAUSED".equals(newStatus) || "COMPLETED".equals(newStatus);
+            return "PAUSED".equals(newStatus);
         }
         // PAUSED có thể chuyển lại IN_PROGRESS (resume)
         if ("PAUSED".equals(currentStatus)) {
@@ -226,6 +225,34 @@ public class ProjectService {
             project.setStatus(request.getStatus());
         }
 
+        project = projectRepository.save(project);
+
+        return mapToResponse(project);
+    }
+
+    @Transactional
+    public ProjectResponse activateProject(Long projectId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+
+        User manager = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        // Kiểm tra quyền: chỉ manager của project mới được kích hoạt lại
+        if (!project.getManager().getUserId().equals(manager.getUserId())) {
+            throw new RuntimeException("You don't have permission to activate this project");
+        }
+
+        // Kiểm tra project phải ở trạng thái INACTIVE
+        if (!"INACTIVE".equals(project.getStatus())) {
+            throw new RuntimeException("Only INACTIVE projects can be activated");
+        }
+
+        // Kích hoạt lại: đổi status thành DRAFT
+        project.setStatus("DRAFT");
         project = projectRepository.save(project);
 
         return mapToResponse(project);

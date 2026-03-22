@@ -97,4 +97,12 @@ public class ProjectController {
         projectLabelRuleService.setProjectLabelRules(projectId, request.getRuleIds());
         return ResponseEntity.noContent().build();
     }
+
+    @Operation(summary = "Activate (restore) project", description = "Activate a project that was previously deleted (INACTIVE status)")
+    @PreAuthorize("hasRole('MANAGER')")
+    @PatchMapping("/{projectId}/activate")
+    public ResponseEntity<ProjectResponse> activateProject(@PathVariable Long projectId) {
+        ProjectResponse response = projectService.activateProject(projectId);
+        return ResponseEntity.ok(response);
+    }
 }
