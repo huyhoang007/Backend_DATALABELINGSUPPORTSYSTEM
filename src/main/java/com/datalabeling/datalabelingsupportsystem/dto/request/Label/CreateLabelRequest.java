@@ -20,6 +20,6 @@ public class CreateLabelRequest {
 
     private String description;
 
-    @Size(min = 1, max = 1, message = "Hotkey must be a single character")
+    @Size(max = 20, message = "Hotkey must not exceed 20 characters")
     private String shortcutKey;
 }
