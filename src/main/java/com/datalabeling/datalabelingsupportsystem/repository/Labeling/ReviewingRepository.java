@@ -18,8 +18,7 @@ public interface ReviewingRepository extends JpaRepository<Reviewing, Long> {
     List<Reviewing> findByAssignment_AssignmentId(Long assignmentId);
 
     @Query("SELECT COUNT(DISTINCT r.dataItem.itemId) FROM Reviewing r " +
-            "WHERE r.assignment.assignmentId = :assignmentId " +
-            "AND r.status IN ('APPROVED', 'PENDING')")
+            "WHERE r.assignment.assignmentId = :assignmentId")
     long countAnnotatedItems(@Param("assignmentId") Long assignmentId);
 
     boolean existsByReviewingIdAndAnnotator_UserId(Long reviewingId, Long annotatorId);
