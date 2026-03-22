@@ -71,10 +71,11 @@ public class ReviewServiceImpl implements ReviewService {
                         throw new ValidationException("Access denied: not assigned reviewer");
                 }
 
-                // Assignment phải ở trạng thái SUBMITTED, RE_SUBMITTED hoặc REJECTED để review
+                // Assignment phải ở trạng thái SUBMITTED, RE_SUBMITTED, REJECTED hoặc APPROVED để review
                 if (!(assignment.getStatus() == AssignmentStatus.SUBMITTED
                                 || assignment.getStatus() == AssignmentStatus.RE_SUBMITTED
-                                || assignment.getStatus() == AssignmentStatus.REJECTED)) {
+                                || assignment.getStatus() == AssignmentStatus.REJECTED
+                                || assignment.getStatus() == AssignmentStatus.APPROVED)) {
                         throw new ValidationException("Assignment is not ready for review");
                 }
 
@@ -301,10 +302,11 @@ public class ReviewServiceImpl implements ReviewService {
                         throw new ValidationException("Access denied: only assigned reviewer can review");
                 }
 
-                // assignment phải đang ở trạng thái SUBMITTED, RE_SUBMITTED hoặc REJECTED để review
+                // assignment phải đang ở trạng thái SUBMITTED, RE_SUBMITTED, REJECTED hoặc APPROVED để review
                 if (!(assignment.getStatus() == AssignmentStatus.SUBMITTED
                                 || assignment.getStatus() == AssignmentStatus.RE_SUBMITTED
-                                || assignment.getStatus() == AssignmentStatus.REJECTED)) {
+                                || assignment.getStatus() == AssignmentStatus.REJECTED
+                                || assignment.getStatus() == AssignmentStatus.APPROVED)) {
                         throw new ValidationException("Assignment is not ready for review");
                 }
                 return assignment;

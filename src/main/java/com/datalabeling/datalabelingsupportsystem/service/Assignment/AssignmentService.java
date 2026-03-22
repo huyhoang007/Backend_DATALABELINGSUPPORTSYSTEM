@@ -53,7 +53,7 @@ public class AssignmentService {
             throw new RuntimeException("Vui lòng thêm quy tắc gắn nhãn cho dự án này trước khi giao nhiệm vụ.");
         }
         if (!hasPolicies) {
-            throw new RuntimeException("Vui lòng thêm các lỗi vào dự án này trước khi giao nhiệm vụ.");
+            throw new RuntimeException("Vui lòng thêm chính sách cho dự án này trước khi giao nhiệm vụ.");
         }
 
         // Kiểm tra dataset thuộc project
