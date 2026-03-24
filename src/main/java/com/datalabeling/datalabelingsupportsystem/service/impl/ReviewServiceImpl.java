@@ -53,6 +53,7 @@ public class ReviewServiceImpl implements ReviewService {
                                                 .datasetName(a.getDataset().getName())
                                                 .dataType(a.getProject().getDataType())
                                                 .status(a.getStatus().name())
+                                                .projectStatus(a.getProject().getStatus())
                                                 .progress(a.getProgress())
                                                 .completedAt(a.getCompletedAt())
                                                 .annotatorName(a.getAnnotator().getFullName())
@@ -141,6 +142,19 @@ public class ReviewServiceImpl implements ReviewService {
                                 .labelGuideUrls(guideUrls)
                                 .progress(assignment.getProgress() != null ? assignment.getProgress() : 0)
                                 .assignmentStatus(assignment.getStatus().name())
+                                // Calculate summary stats
+                                .totalShapes(itemResponses.stream()
+                                                .mapToInt(item -> item.getAnnotations().size())
+                                                .sum())
+                                .totalLabels((int) itemResponses.stream()
+                                                .flatMap(item -> item.getAnnotations().stream())
+                                                .map(AnnotationResponse::getLabelId)
+                                                .distinct()
+                                                .count())
+                                .annotatedItems((int) itemResponses.stream()
+                                                .filter(item -> !item.getAnnotations().isEmpty())
+                                                .count())
+                                .totalItems(itemResponses.size())
                                 .build();
         }
 

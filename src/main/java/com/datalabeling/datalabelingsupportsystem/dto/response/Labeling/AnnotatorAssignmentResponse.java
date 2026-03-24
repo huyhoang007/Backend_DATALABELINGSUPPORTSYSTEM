@@ -12,6 +12,7 @@ public class AnnotatorAssignmentResponse {
     private String datasetName;
     private String dataType;
     private String status;
+    private String projectStatus;
     private Integer progress;
     private LocalDateTime completedAt;
     private String annotatorName;

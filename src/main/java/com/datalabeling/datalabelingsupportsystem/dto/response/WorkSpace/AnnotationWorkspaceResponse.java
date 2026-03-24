@@ -22,4 +22,10 @@ public class AnnotationWorkspaceResponse {
     private List<String> labelGuideUrls;
     private Integer progress;
     private String assignmentStatus;
+    
+    // Summary stats for entire assignment
+    private Integer totalShapes;
+    private Integer totalLabels;
+    private Integer annotatedItems;
+    private Integer totalItems;
 }
