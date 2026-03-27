@@ -45,7 +45,9 @@ public class FileProxyController {
         String lower = name.toLowerCase();
         if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
         if (lower.endsWith(".png")) return "image/png";
-        if (lower.endsWith(".pdf")) return "application/pdf";
+        if (lower.endsWith(".gif")) return "image/gif";
+        if (lower.endsWith(".bmp")) return "image/bmp";
+        if (lower.endsWith(".webp")) return "image/webp";
         return "application/octet-stream";
     }
 }

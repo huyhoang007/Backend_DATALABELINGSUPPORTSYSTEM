@@ -36,6 +36,15 @@ public class DatasetService {
     private final ProjectRepository projectRepository;
     private final AzureBlobService azureBlobService;
 
+    // Hỗ trợ chỉ các định dạng ảnh
+    private static final java.util.Set<String> ALLOWED_IMAGE_TYPES = java.util.Set.of(
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/bmp",
+            "image/webp"
+    );
+
     /**
      * POST /projects/{id}/datasets
      * Tạo Dataset mới với status PENDING và bulk insert DataItems
@@ -152,26 +161,28 @@ public class DatasetService {
             if (file.isEmpty()) continue;
 
             String originalFilename = file.getOriginalFilename();
+            String contentType = file.getContentType();
+
+            // Xác thực: chỉ chấp nhận file ảnh
+            validateImageFile(originalFilename, contentType);
+
             String extension = (originalFilename != null && originalFilename.contains("."))
                     ? originalFilename.substring(originalFilename.lastIndexOf("."))
                     : "";
             String newFileName = UUID.randomUUID() + extension;
             String blobName = "project_" + dataset.getProject().getProjectId() + "/" + newFileName;
 
-            String contentType = file.getContentType();
             byte[] fileBytes = file.getBytes();
 
             // Upload lên Azure Blob (hoặc local disk nếu dev)
-            azureBlobService.uploadFile(blobName, fileBytes, contentType != null ? contentType : "application/octet-stream");
+            azureBlobService.uploadFile(blobName, fileBytes, contentType);
 
             // Đọc width/height
             Integer width = null, height = null;
-            if (contentType != null && contentType.startsWith("image/")) {
-                try {
-                    BufferedImage img = ImageIO.read(new java.io.ByteArrayInputStream(fileBytes));
-                    if (img != null) { width = img.getWidth(); height = img.getHeight(); }
-                } catch (IOException ignored) {}
-            }
+            try {
+                BufferedImage img = ImageIO.read(new java.io.ByteArrayInputStream(fileBytes));
+                if (img != null) { width = img.getWidth(); height = img.getHeight(); }
+            } catch (IOException ignored) {}
 
             items.add(DataItem.builder()
                     .dataset(dataset)
@@ -186,14 +197,39 @@ public class DatasetService {
         return items;
     }
 
+    /**
+     * Xác thực file chỉ cho phép ảnh: PNG, JPG, JPEG, GIF, BMP, WEBP
+     */
+    private void validateImageFile(String filename, String contentType) {
+        if (contentType == null || contentType.trim().isEmpty()) {
+            throw new RuntimeException("File không hợp lệ: không xác định được loại file");
+        }
+
+        if (!isValidImageType(contentType)) {
+            throw new RuntimeException("File '" + filename + "' không được hỗ trợ. " +
+                    "Chỉ hỗ trợ ảnh: PNG, JPG, JPEG, GIF, BMP, WEBP");
+        }
+    }
+
+    /**
+     * Kiểm tra content type có phải ảnh được hỗ trợ không
+     */
+    private boolean isValidImageType(String contentType) {
+        return ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase());
+    }
+
+    /**
+     * Chuyển content type sang loại file (PNG, JPG, GIF, BMP, WEBP)
+     */
     private String resolveFileType(String contentType) {
         if (contentType == null)
             return "UNKNOWN";
-        return switch (contentType) {
+        return switch (contentType.toLowerCase()) {
             case "image/jpeg" -> "JPEG";
             case "image/png" -> "PNG";
-            case "application/pdf" -> "PDF";
-            case "text/csv" -> "CSV";
+            case "image/gif" -> "GIF";
+            case "image/bmp" -> "BMP";
+            case "image/webp" -> "WEBP";
             default -> "UNKNOWN";
         };
     }
