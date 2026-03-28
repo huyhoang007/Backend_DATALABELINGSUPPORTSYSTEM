@@ -101,4 +101,43 @@ public class ProjectAnalyticsController {
         ProjectAnalyticsSummaryResponse response = analyticsService.getProjectAnalyticsSummary(projectId);
         return ResponseEntity.ok(response);
     }
+    
+    @Operation(
+            summary = "Calculate quality score",
+            description = "Tính điểm chất lượng dự án dựa trên các metrics hiện tại"
+    )
+    @PreAuthorize("hasRole('MANAGER')")
+    @PostMapping("/projects/{projectId}/calculate-score")
+    public ResponseEntity<CalculateScoreResponse> calculateQualityScore(
+            @Parameter(description = "Project ID")
+            @PathVariable Long projectId) {
+        CalculateScoreResponse response = analyticsService.calculateQualityScore(projectId);
+        return ResponseEntity.ok(response);
+    }
+    
+    @Operation(
+            summary = "Get gold data penalty",
+            description = "Lấy thông tin penalty dựa trên gold data (dữ liệu chuẩn)"
+    )
+    @PreAuthorize("hasRole('MANAGER')")
+    @GetMapping("/projects/{projectId}/gold-data-penalty")
+    public ResponseEntity<GoldDataPenaltyResponse> getGoldDataPenalty(
+            @Parameter(description = "Project ID")
+            @PathVariable Long projectId) {
+        GoldDataPenaltyResponse response = analyticsService.getGoldDataPenalty(projectId);
+        return ResponseEntity.ok(response);
+    }
+    
+    @Operation(
+            summary = "Normalize project data",
+            description = "Normalize dữ liệu và labels của dự án"
+    )
+    @PreAuthorize("hasRole('MANAGER')")
+    @PostMapping("/projects/{projectId}/normalize-data")
+    public ResponseEntity<NormalizeDataResponse> normalizeProjectData(
+            @Parameter(description = "Project ID")
+            @PathVariable Long projectId) {
+        NormalizeDataResponse response = analyticsService.normalizeProjectData(projectId);
+        return ResponseEntity.ok(response);
+    }
 }

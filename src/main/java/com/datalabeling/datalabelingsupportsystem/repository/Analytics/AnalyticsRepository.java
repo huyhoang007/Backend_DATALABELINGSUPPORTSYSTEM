@@ -108,6 +108,16 @@ public interface AnalyticsRepository extends JpaRepository<Assignment, Long> {
                    "WHERE annotator_id = :userId AND completed_at IS NOT NULL",
            nativeQuery = true)
     Double getAverageCompletionTimeByUser(@Param("userId") Long userId);
-
+    
+    // Gold Data Queries
+    @Query("SELECT COUNT(di) FROM DataItem di " +
+            "WHERE di.dataset.project.projectId = :projectId AND di.isGoldData = true")
+    long countGoldDataItemsByProject(@Param("projectId") Long projectId);
+    
+    @Query("SELECT COUNT(r) FROM Reviewing r " +
+            "WHERE r.assignment.project.projectId = :projectId " +
+            "AND r.dataItem.isGoldData = true " +
+            "AND r.status = 'REJECTED'")
+    long countIncorrectAnnotationsAgainstGoldData(@Param("projectId") Long projectId);
 
 }
