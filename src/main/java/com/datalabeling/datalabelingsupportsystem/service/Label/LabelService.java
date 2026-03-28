@@ -67,6 +67,22 @@ public class LabelService {
         Label label = labelRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Label not found"));
 
+        // ✅ Check uniqueness name+type (ngoại trừ chính label này)
+        // Nếu tên hoặc type thay đổi, kiểm tra xem tên+type mới đã tồn tại không
+        if (!label.getLabelName().equals(request.getLabelName()) || 
+            !label.getLabelType().equals(request.getLabelType())) {
+            
+            var existingLabel = labelRepository.findByLabelNameAndLabelType(
+                request.getLabelName(), 
+                request.getLabelType()
+            );
+            
+            // Nếu tìm thấy label khác với ID hiện tại → lỗi
+            if (existingLabel.isPresent() && !existingLabel.get().getLabelId().equals(id)) {
+                throw new RuntimeException("Label with this name and type already exists");
+            }
+        }
+
         label.setLabelName(request.getLabelName());
         label.setColorCode(request.getColorCode());
         label.setLabelType(request.getLabelType());
