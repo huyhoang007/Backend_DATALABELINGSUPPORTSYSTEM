@@ -113,28 +113,29 @@ public class ProjectAnalyticsService {
      * Lấy danh sách đóng góp của các thành viên
      */
     public List<ContributionResponse> getTeamContributions(Long projectId) {
-        Project project = getProjectAndValidateAccess(projectId);
-        
+        getProjectAndValidateAccess(projectId);
         List<Assignment> assignments = assignmentRepository.findByProject_ProjectId(projectId);
         
-        Map<User, ContributionMetrics> userMetrics = new HashMap<>();
+        Map<Long, ContributionRoleContext> members = new LinkedHashMap<>();
         
         for (Assignment assignment : assignments) {
-            // Thống kê cho Annotator
             User annotator = assignment.getAnnotator();
-            userMetrics.computeIfAbsent(annotator, u -> new ContributionMetrics(u, "ANNOTATOR"))
-                    .addAssignment(assignment);
+            members.putIfAbsent(
+                    annotator.getUserId(),
+                    new ContributionRoleContext(annotator, "ANNOTATOR")
+            );
             
-            // Thống kê cho Reviewer
             if (assignment.getReviewer() != null) {
                 User reviewer = assignment.getReviewer();
-                userMetrics.computeIfAbsent(reviewer, u -> new ContributionMetrics(u, "REVIEWER"))
-                        .incrementReviews();
+                members.putIfAbsent(
+                        reviewer.getUserId(),
+                        new ContributionRoleContext(reviewer, "REVIEWER")
+                );
             }
         }
         
-        return userMetrics.values().stream()
-                .map(this::mapToContributionResponse)
+        return members.values().stream()
+                .map(member -> buildContributionResponse(projectId, member.user(), member.role(), assignments))
                 .sorted(Comparator.comparingDouble(ContributionResponse::getPerformanceScore).reversed())
                 .collect(Collectors.toList());
     }
@@ -143,46 +144,17 @@ public class ProjectAnalyticsService {
      * Lấy thông tin chi tiết đóng góp của một người dùng
      */
     public ContributionResponse getUserContribution(Long projectId, Long userId) {
-        Project project = getProjectAndValidateAccess(projectId);
+        getProjectAndValidateAccess(projectId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        long totalAssignments = analyticsRepository.countTotalAssignmentsByUser(userId);
-        long completedAssignments = analyticsRepository.countCompletedAssignmentsByUser(userId);
-        double completionRate = totalAssignments > 0 ? 
-                (double) completedAssignments / totalAssignments * 100 : 0;
-        
-        long annotationsCount = analyticsRepository.countAnnotationsByUser(userId);
-        long policiesViolated = analyticsRepository.countPolicyViolationsByUser(userId);
-        double policyComplianceRate = annotationsCount > 0 ? 
-                ((double) (annotationsCount - policiesViolated) / annotationsCount) * 100 : 100;
-        
-        long reviewsCount = analyticsRepository.countReviewsByUser(userId);
-        long approvedCount = analyticsRepository.countApprovedReviewsByUser(userId);
-        long rejectedCount = analyticsRepository.countRejectedReviewsByUser(userId);
-        double rejectionRate = reviewsCount > 0 ? 
-                (double) rejectedCount / reviewsCount * 100 : 0;
-        
-        double performanceScore = calculatePerformanceScore(completionRate, policyComplianceRate, 
-                reviewsCount > 0 ? (100 - rejectionRate) : completionRate);
-        
-        return ContributionResponse.builder()
-                .userId(userId)
-                .username(user.getUsername())
-                .fullName(user.getFullName())
-                .role(user.getRole().getRoleName())
-                .totalAssignments(totalAssignments)
-                .completedAssignments(completedAssignments)
-                .completionRate(Math.min(completionRate, 100.0))
-                .annotationsCount(annotationsCount)
-                .policiesViolated(policiesViolated)
-                .policyComplianceRate(Math.min(policyComplianceRate, 100.0))
-                .reviewsCount(reviewsCount)
-                .approvedCount(approvedCount)
-                .rejectedCount(rejectedCount)
-                .rejectionRate(rejectionRate)
-                .performanceScore(Math.min(performanceScore, 100.0))
-                .build();
+        List<Assignment> projectAssignments = assignmentRepository.findByProject_ProjectId(projectId);
+
+        String role = projectAssignments.stream()
+                .anyMatch(a -> a.getReviewer() != null && a.getReviewer().getUserId().equals(userId))
+                ? "REVIEWER"
+                : "ANNOTATOR";
+
+        return buildContributionResponse(projectId, user, role, projectAssignments);
     }
     
     /**
@@ -294,32 +266,71 @@ public class ProjectAnalyticsService {
         return Arrays.stream(scores).average().orElse(0);
     }
     
-    private ContributionResponse mapToContributionResponse(ContributionMetrics metrics) {
-        User user = metrics.user;
-        
-        double performanceScore = calculatePerformanceScore(
-                metrics.completionRate,
-                metrics.policyComplianceRate,
-                metrics.reviewsCount > 0 ? (100 - metrics.rejectionRate) : metrics.completionRate
-        );
-        
+    private ContributionResponse buildContributionResponse(Long projectId, User user, String role, List<Assignment> projectAssignments) {
+        List<Assignment> userAssignments = projectAssignments.stream()
+                .filter(assignment -> "REVIEWER".equals(role)
+                        ? assignment.getReviewer() != null && assignment.getReviewer().getUserId().equals(user.getUserId())
+                        : assignment.getAnnotator() != null && assignment.getAnnotator().getUserId().equals(user.getUserId()))
+                .toList();
+
+        long totalAssignments = userAssignments.size();
+        long completedAssignments = userAssignments.stream()
+                .filter(assignment -> isCompletedForRole(assignment, role))
+                .count();
+        double completionRate = totalAssignments > 0 ? (double) completedAssignments / totalAssignments * 100 : 0;
+
+        long annotationsCount = analyticsRepository.countAnnotationsByUserInProject(projectId, user.getUserId());
+        long approvedAnnotations = analyticsRepository.countApprovedAnnotationsByUserInProject(projectId, user.getUserId());
+        long policiesViolated = analyticsRepository.countPolicyViolationsByUserInProject(projectId, user.getUserId());
+        double annotationQuality = annotationsCount > 0 ? (double) approvedAnnotations / annotationsCount * 100 : 0;
+        double policyComplianceRate = annotationsCount > 0
+                ? ((double) (annotationsCount - policiesViolated) / annotationsCount) * 100
+                : 0;
+
+        long reviewsCount = analyticsRepository.countReviewsByUserInProject(projectId, user.getUserId());
+        long approvedCount = analyticsRepository.countApprovedReviewsByUserInProject(projectId, user.getUserId());
+        long rejectedCount = analyticsRepository.countRejectedReviewsByUserInProject(projectId, user.getUserId());
+        double rejectionRate = reviewsCount > 0 ? (double) rejectedCount / reviewsCount * 100 : 0;
+
+        double qualityScore = "REVIEWER".equals(role)
+                ? (reviewsCount > 0 ? (100 - rejectionRate) : 0)
+                : annotationQuality;
+        double complianceScore = "REVIEWER".equals(role)
+                ? (reviewsCount > 0 ? 100 : 0)
+                : policyComplianceRate;
+        double performanceScore = calculatePerformanceScore(completionRate, complianceScore, qualityScore);
+
         return ContributionResponse.builder()
                 .userId(user.getUserId())
                 .username(user.getUsername())
                 .fullName(user.getFullName())
-                .role(metrics.role)
-                .totalAssignments(metrics.totalAssignments)
-                .completedAssignments(metrics.completedAssignments)
-                .completionRate(Math.min(metrics.completionRate, 100.0))
-                .annotationsCount(metrics.annotationsCount)
-                .policiesViolated(metrics.policiesViolated)
-                .policyComplianceRate(Math.min(metrics.policyComplianceRate, 100.0))
-                .reviewsCount(metrics.reviewsCount)
-                .approvedCount(metrics.approvedCount)
-                .rejectedCount(metrics.rejectedCount)
-                .rejectionRate(metrics.rejectionRate)
+                .role(role)
+                .totalAssignments(totalAssignments)
+                .completedAssignments(completedAssignments)
+                .completionRate(Math.min(completionRate, 100.0))
+                .annotationsCount(annotationsCount)
+                .annotationQuality(Math.min(annotationQuality, 100.0))
+                .policiesViolated(policiesViolated)
+                .policyComplianceRate(Math.min(policyComplianceRate, 100.0))
+                .reviewsCount(reviewsCount)
+                .approvedCount(approvedCount)
+                .rejectedCount(rejectedCount)
+                .rejectionRate(Math.min(rejectionRate, 100.0))
                 .performanceScore(Math.min(performanceScore, 100.0))
                 .build();
+    }
+
+    private boolean isCompletedForRole(Assignment assignment, String role) {
+        if ("REVIEWER".equals(role)) {
+            return assignment.getStatus() == com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus.APPROVED
+                    || assignment.getStatus() == com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus.REJECTED;
+        }
+
+        return assignment.getStatus() == com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus.COMPLETED
+                || assignment.getStatus() == com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus.SUBMITTED
+                || assignment.getStatus() == com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus.RE_SUBMITTED
+                || assignment.getStatus() == com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus.APPROVED
+                || assignment.getStatus() == com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus.REJECTED;
     }
     
     private ComponentQualityResponse calculateLabelQuality(Label label, Long projectId) {
@@ -467,44 +478,5 @@ public class ProjectAnalyticsService {
         return "POOR";
     }
     
-    /**
-     * Helper class tạm để lưu tữ metrics trong quá trình tính toán
-     */
-    private static class ContributionMetrics {
-        User user;
-        String role;
-        long totalAssignments = 0;
-        long completedAssignments = 0;
-        long annotationsCount = 0;
-        long policiesViolated = 0;
-        long reviewsCount = 0;
-        long approvedCount = 0;
-        long rejectedCount = 0;
-        
-        double completionRate = 0;
-        double policyComplianceRate = 100;
-        double rejectionRate = 0;
-        
-        ContributionMetrics(User user, String role) {
-            this.user = user;
-            this.role = role;
-        }
-        
-        void addAssignment(Assignment assignment) {
-            totalAssignments++;
-            if (assignment.getStatus().toString().equals("COMPLETED")) {
-                completedAssignments++;
-            }
-            updateCompletionRate();
-        }
-        
-        void incrementReviews() {
-            reviewsCount++;
-        }
-        
-        void updateCompletionRate() {
-            completionRate = totalAssignments > 0 ?
-                    (double) completedAssignments / totalAssignments * 100 : 0;
-        }
-    }
+    private record ContributionRoleContext(User user, String role) {}
 }

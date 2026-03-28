@@ -46,22 +46,57 @@ public interface AnalyticsRepository extends JpaRepository<Assignment, Long> {
             "WHERE r.annotator.userId = :userId " +
             "AND r.status IN ('APPROVED', 'REJECTED')")
     long countAnnotationsByUser(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(r) FROM Reviewing r " +
+            "WHERE r.assignment.project.projectId = :projectId " +
+            "AND r.annotator.userId = :userId " +
+            "AND r.status IN ('APPROVED', 'REJECTED')")
+    long countAnnotationsByUserInProject(@Param("projectId") Long projectId, @Param("userId") Long userId);
+
+    @Query("SELECT COUNT(r) FROM Reviewing r " +
+            "WHERE r.assignment.project.projectId = :projectId " +
+            "AND r.annotator.userId = :userId " +
+            "AND r.status = 'APPROVED'")
+    long countApprovedAnnotationsByUserInProject(@Param("projectId") Long projectId, @Param("userId") Long userId);
     
     @Query("SELECT COUNT(r) FROM Reviewing r " +
             "WHERE r.annotator.userId = :userId AND r.policy.policyId IS NOT NULL")
     long countPolicyViolationsByUser(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(r) FROM Reviewing r " +
+            "WHERE r.assignment.project.projectId = :projectId " +
+            "AND r.annotator.userId = :userId " +
+            "AND r.policy.policyId IS NOT NULL")
+    long countPolicyViolationsByUserInProject(@Param("projectId") Long projectId, @Param("userId") Long userId);
     
     @Query("SELECT COUNT(r) FROM Reviewing r " +
             "WHERE r.reviewer.userId = :userId")
     long countReviewsByUser(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(r) FROM Reviewing r " +
+            "WHERE r.assignment.project.projectId = :projectId " +
+            "AND r.reviewer.userId = :userId")
+    long countReviewsByUserInProject(@Param("projectId") Long projectId, @Param("userId") Long userId);
     
     @Query("SELECT COUNT(r) FROM Reviewing r " +
             "WHERE r.reviewer.userId = :userId AND r.status = 'APPROVED'")
     long countApprovedReviewsByUser(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(r) FROM Reviewing r " +
+            "WHERE r.assignment.project.projectId = :projectId " +
+            "AND r.reviewer.userId = :userId " +
+            "AND r.status = 'APPROVED'")
+    long countApprovedReviewsByUserInProject(@Param("projectId") Long projectId, @Param("userId") Long userId);
     
     @Query("SELECT COUNT(r) FROM Reviewing r " +
             "WHERE r.reviewer.userId = :userId AND r.status = 'REJECTED'")
     long countRejectedReviewsByUser(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(r) FROM Reviewing r " +
+            "WHERE r.assignment.project.projectId = :projectId " +
+            "AND r.reviewer.userId = :userId " +
+            "AND r.status = 'REJECTED'")
+    long countRejectedReviewsByUserInProject(@Param("projectId") Long projectId, @Param("userId") Long userId);
     
     // Quality Metrics Queries
     @Query("SELECT COUNT(r) FROM Reviewing r " +
