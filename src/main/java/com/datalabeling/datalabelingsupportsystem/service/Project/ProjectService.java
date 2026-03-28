@@ -5,6 +5,7 @@ import com.datalabeling.datalabelingsupportsystem.dto.request.Project.UpdateProj
 import com.datalabeling.datalabelingsupportsystem.dto.response.Project.ProjectResponse;
 import com.datalabeling.datalabelingsupportsystem.pojo.Project;
 import com.datalabeling.datalabelingsupportsystem.pojo.User;
+import com.datalabeling.datalabelingsupportsystem.repository.Assignment.AssignmentRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
+    private final AssignmentRepository assignmentRepository;
 
     @Transactional
     public ProjectResponse createProject(CreateProjectRequest request) {
@@ -104,6 +106,17 @@ public class ProjectService {
         // Kiểm tra quyền: chỉ manager của project mới được xóa
         if (!project.getManager().getUserId().equals(manager.getUserId())) {
             throw new RuntimeException("You don't have permission to delete this project");
+        }
+
+        // Kiểm tra project status: không được xóa project COMPLETED
+        if ("COMPLETED".equalsIgnoreCase(project.getStatus())) {
+            throw new RuntimeException("Cannot delete COMPLETED project. Please create a new project or resume from DRAFT status if needed.");
+        }
+
+        // Kiểm tra xem project có assignments hay không
+        long assignmentCount = assignmentRepository.findByProject_ProjectId(projectId).size();
+        if (assignmentCount > 0) {
+            throw new RuntimeException("Cannot delete project with active assignments. Please remove all assignments first. Current assignments: " + assignmentCount);
         }
 
         // Soft delete: đổi status thành INACTIVE thay vì xóa hẳn

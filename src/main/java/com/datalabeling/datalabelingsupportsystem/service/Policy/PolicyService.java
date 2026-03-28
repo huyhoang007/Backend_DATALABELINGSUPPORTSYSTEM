@@ -100,6 +100,11 @@ public class PolicyService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
         
+        // Kiểm tra project status: không được gán policy cho project COMPLETED
+        if ("COMPLETED".equalsIgnoreCase(project.getStatus())) {
+            throw new RuntimeException("Project is COMPLETED and locked. Only export operations are allowed.");
+        }
+        
         Policy policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new RuntimeException("Policy not found"));
         

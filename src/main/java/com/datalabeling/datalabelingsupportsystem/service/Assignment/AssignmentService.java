@@ -45,6 +45,11 @@ public class AssignmentService {
             throw new RuntimeException("You are not the manager of this project");
         }
 
+        // Kiểm tra project status: không được phân công cho project COMPLETED
+        if ("COMPLETED".equalsIgnoreCase(project.getStatus())) {
+            throw new RuntimeException("Project is COMPLETED and locked. Only export operations are allowed.");
+        }
+
         // Kiểm tra project có label rules và policies
         boolean hasLabelRules = !projectLabelRuleRepository.findByProject_ProjectId(projectId).isEmpty();
         boolean hasPolicies = !projectPolicyRepository.findByProject(project).isEmpty();

@@ -40,6 +40,11 @@ public class ProjectLabelRuleService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
 
+        // Kiểm tra project status: không được cấu hình label rules cho project COMPLETED
+        if ("COMPLETED".equalsIgnoreCase(project.getStatus())) {
+            throw new RuntimeException("Project is COMPLETED and locked. Only export operations are allowed.");
+        }
+
         // Remove all existing links for this project
         projectLabelRuleRepository.deleteByProject_ProjectId(projectId);
 

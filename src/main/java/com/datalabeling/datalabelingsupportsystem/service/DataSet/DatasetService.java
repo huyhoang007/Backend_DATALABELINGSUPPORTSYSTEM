@@ -55,6 +55,11 @@ public class DatasetService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
+        // Kiểm tra project status: không được upload data vào project COMPLETED
+        if ("COMPLETED".equalsIgnoreCase(project.getStatus())) {
+            throw new RuntimeException("Project is COMPLETED and locked. Only export operations are allowed.");
+        }
+
         // Tạo Dataset với status PENDING
         Dataset dataset = Dataset.builder()
                 .project(project)
@@ -132,6 +137,11 @@ public class DatasetService {
     public DatasetResponse addItemsToDataset(Long datasetId, List<MultipartFile> files) throws IOException {
         Dataset dataset = datasetRepository.findById(datasetId)
                 .orElseThrow(() -> new RuntimeException("Dataset not found with id: " + datasetId));
+
+        // Kiểm tra project status: không được thêm data vào project COMPLETED
+        if ("COMPLETED".equalsIgnoreCase(dataset.getProject().getStatus())) {
+            throw new RuntimeException("Project is COMPLETED and locked. Only export operations are allowed.");
+        }
 
         List<DataItem> newItems = uploadAndCreateItems(files, dataset);
         dataItemRepository.saveAll(newItems);
