@@ -387,6 +387,85 @@ public class ProjectAnalyticsService {
         
         return alerts;
     }
+
+    /**
+     * Lấy danh sách điểm số của các thành viên trong dự án (được xếp hạng)
+     */
+    public List<MemberScoreResponse> getMemberScores(Long projectId) {
+        Project project = getProjectAndValidateAccess(projectId);
+        
+        List<ContributionResponse> contributions = getTeamContributions(projectId);
+        
+        // Tạo MemberScoreResponse từ ContributionResponse và thêm xếp hạng
+        List<MemberScoreResponse> scores = new ArrayList<>();
+        for (int i = 0; i < contributions.size(); i++) {
+            ContributionResponse contrib = contributions.get(i);
+            MemberScoreResponse score = mapToMemberScore(contrib, i + 1, contributions.size());
+            scores.add(score);
+        }
+        
+        return scores;
+    }
+
+    /**
+     * Lấy chi tiết điểm số của một thành viên cụ thể
+     */
+    public MemberScoreResponse getMemberScore(Long projectId, Long userId) {
+        Project project = getProjectAndValidateAccess(projectId);
+        ContributionResponse contribution = getUserContribution(projectId, userId);
+        
+        // Lấy tất cả các thành viên để xác định xếp hạng
+        List<ContributionResponse> allContributions = getTeamContributions(projectId);
+        int rank = 1;
+        for (ContributionResponse c : allContributions) {
+            if (c.getUserId().equals(userId)) {
+                break;
+            }
+            rank++;
+        }
+        
+        return mapToMemberScore(contribution, rank, allContributions.size());
+    }
+
+    /**
+     * Helper: Chuyển ContributionResponse sang MemberScoreResponse và thêm xếp hạng
+     */
+    private MemberScoreResponse mapToMemberScore(ContributionResponse contrib, int rank, int totalMembers) {
+        double completionRate = contrib.getCompletionRate() != null ? contrib.getCompletionRate() : 0;
+        double qualityScore = contrib.getAnnotationQuality() != null ? contrib.getAnnotationQuality() : 
+                              (contrib.getRejectionRate() != null ? (100 - contrib.getRejectionRate()) : contrib.getPerformanceScore());
+        double complianceScore = contrib.getPolicyComplianceRate() != null ? contrib.getPolicyComplianceRate() : 100;
+        
+        String tier = determineTier(contrib.getPerformanceScore());
+        
+        return MemberScoreResponse.builder()
+                .userId(contrib.getUserId())
+                .username(contrib.getUsername())
+                .fullName(contrib.getFullName())
+                .role(contrib.getRole())
+                .performanceScore(Math.min(Math.max(contrib.getPerformanceScore(), 0), 100))
+                .completionRate(Math.min(Math.max(completionRate, 0), 100))
+                .qualityScore(Math.min(Math.max(qualityScore, 0), 100))
+                .complianceScore(Math.min(Math.max(complianceScore, 0), 100))
+                .rank(rank)
+                .tier(tier)
+                .totalAssignments(contrib.getTotalAssignments())
+                .completedAssignments(contrib.getCompletedAssignments())
+                .annotationsCount(contrib.getAnnotationsCount())
+                .reviewsCount(contrib.getReviewsCount())
+                .build();
+    }
+
+    /**
+     * Helper: Xác định tier dựa vào performance score
+     */
+    private String determineTier(Double score) {
+        if (score == null) score = 0.0;
+        if (score >= 85) return "EXCELLENT";
+        if (score >= 70) return "GOOD";
+        if (score >= 50) return "AVERAGE";
+        return "POOR";
+    }
     
     /**
      * Helper class tạm để lưu tữ metrics trong quá trình tính toán

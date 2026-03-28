@@ -101,4 +101,33 @@ public class ProjectAnalyticsController {
         ProjectAnalyticsSummaryResponse response = analyticsService.getProjectAnalyticsSummary(projectId);
         return ResponseEntity.ok(response);
     }
+
+    @Operation(
+            summary = "Get member scores in project",
+            description = "Lấy điểm số của các thành viên trong dự án (hiệu suất, chất lượng, tuân thủ). Kết quả được xếp hạng từ cao xuống thấp"
+    )
+    @PreAuthorize("hasRole('MANAGER')")
+    @GetMapping("/projects/{projectId}/member-scores")
+    public ResponseEntity<List<MemberScoreResponse>> getMemberScores(
+            @Parameter(description = "Project ID")
+            @PathVariable Long projectId) {
+        List<MemberScoreResponse> response = analyticsService.getMemberScores(projectId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Get member score details",
+            description = "Lấy chi tiết điểm số của một thành viên cụ thể"
+    )
+    @PreAuthorize("hasRole('MANAGER')")
+    @GetMapping("/projects/{projectId}/member-scores/{userId}")
+    public ResponseEntity<MemberScoreResponse> getMemberScore(
+            @Parameter(description = "Project ID")
+            @PathVariable Long projectId,
+            @Parameter(description = "User ID")
+            @PathVariable Long userId) {
+        MemberScoreResponse response = analyticsService.getMemberScore(projectId, userId);
+        return ResponseEntity.ok(response);
+    }
 }
+
