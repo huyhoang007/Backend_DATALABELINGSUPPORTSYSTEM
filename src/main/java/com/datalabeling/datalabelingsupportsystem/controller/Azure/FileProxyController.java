@@ -2,6 +2,7 @@ package com.datalabeling.datalabelingsupportsystem.controller.Azure;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.datalabeling.datalabelingsupportsystem.service.Azure.AzureBlobService;
 
 import java.io.IOException;
+import java.time.Duration;
 
 @RestController
 @RequiredArgsConstructor
@@ -37,6 +39,7 @@ public class FileProxyController {
 
         String contentType = detectContentType(blobName);
         return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(Duration.ofHours(6)).cachePublic())
                 .contentType(MediaType.parseMediaType(contentType))
                 .body(bytes);
     }

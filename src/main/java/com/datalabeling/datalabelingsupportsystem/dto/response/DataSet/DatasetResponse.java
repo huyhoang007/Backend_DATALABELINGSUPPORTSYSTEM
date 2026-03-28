@@ -12,6 +12,7 @@ public class DatasetResponse {
     private Long datasetId;
     private String name;
     private BatchStatus status;
+    private String computedStatus;
     private LocalDateTime createdAt;
     private Long projectId;
     private long totalItems;

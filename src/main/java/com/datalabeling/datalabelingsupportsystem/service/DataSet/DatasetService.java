@@ -3,10 +3,12 @@ package com.datalabeling.datalabelingsupportsystem.service.DataSet;
 import com.datalabeling.datalabelingsupportsystem.dto.request.DataSet.UpdateDatasetRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.DataItem.DataItemResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.DataSet.DatasetResponse;
+import com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus;
 import com.datalabeling.datalabelingsupportsystem.enums.DataSet.BatchStatus;
 import com.datalabeling.datalabelingsupportsystem.pojo.DataItem;
 import com.datalabeling.datalabelingsupportsystem.pojo.Dataset;
 import com.datalabeling.datalabelingsupportsystem.pojo.Project;
+import com.datalabeling.datalabelingsupportsystem.repository.Assignment.AssignmentRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DataItemRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DatasetRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
@@ -19,11 +21,10 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -34,6 +35,7 @@ public class DatasetService {
     private final DatasetRepository datasetRepository;
     private final DataItemRepository dataItemRepository;
     private final ProjectRepository projectRepository;
+    private final AssignmentRepository assignmentRepository;
     private final AzureBlobService azureBlobService;
 
     // Hỗ trợ chỉ các định dạng ảnh
@@ -73,7 +75,7 @@ public class DatasetService {
         List<DataItem> dataItems = uploadAndCreateItems(files, savedDataset);
         dataItemRepository.saveAll(dataItems);
 
-        return mapToDatasetResponse(savedDataset, dataItems.size());
+        return mapToDatasetResponse(savedDataset, dataItems.size(), BatchStatus.PENDING.name());
     }
 
     /**
@@ -85,10 +87,31 @@ public class DatasetService {
             throw new RuntimeException("Project not found with id: " + projectId);
         }
 
-        return datasetRepository.findByProject_ProjectId(projectId)
-                .stream()
-                .map(ds -> mapToDatasetResponse(ds,
-                        dataItemRepository.countByDataset_DatasetIdAndIsActiveTrue(ds.getDatasetId())))
+        List<Dataset> datasets = datasetRepository.findByProject_ProjectId(projectId);
+        if (datasets.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> datasetIds = datasets.stream()
+                .map(Dataset::getDatasetId)
+                .toList();
+
+        Map<Long, Long> itemCountByDatasetId = new HashMap<>();
+        dataItemRepository.countActiveItemsByDatasetIds(datasetIds)
+                .forEach(row -> itemCountByDatasetId.put(row.getDatasetId(), row.getTotal()));
+
+        Map<Long, Map<AssignmentStatus, Long>> assignmentStatusByDatasetId = new HashMap<>();
+        assignmentRepository.countStatusesByProjectId(projectId)
+                .forEach(row -> assignmentStatusByDatasetId
+                        .computeIfAbsent(row.getDatasetId(), ignored -> new HashMap<>())
+                        .put(row.getStatus(), row.getTotal()));
+
+        return datasets.stream()
+                .map(dataset -> mapToDatasetResponse(
+                        dataset,
+                        itemCountByDatasetId.getOrDefault(dataset.getDatasetId(), 0L),
+                        computeDatasetStatus(assignmentStatusByDatasetId.get(dataset.getDatasetId()))
+                ))
                 .collect(Collectors.toList());
     }
 
@@ -126,7 +149,7 @@ public class DatasetService {
         Dataset updated = datasetRepository.save(dataset);
 
         long count = dataItemRepository.countByDataset_DatasetIdAndIsActiveTrue(datasetId);
-        return mapToDatasetResponse(updated, count);
+        return mapToDatasetResponse(updated, count, dataset.getStatus().name());
     }
 
     /**
@@ -147,7 +170,7 @@ public class DatasetService {
         dataItemRepository.saveAll(newItems);
 
         long totalCount = dataItemRepository.countByDataset_DatasetIdAndIsActiveTrue(datasetId);
-        return mapToDatasetResponse(dataset, totalCount);
+        return mapToDatasetResponse(dataset, totalCount, dataset.getStatus().name());
     }
 
     /**
@@ -244,11 +267,12 @@ public class DatasetService {
         };
     }
 
-    private DatasetResponse mapToDatasetResponse(Dataset dataset, long totalItems) {
+    private DatasetResponse mapToDatasetResponse(Dataset dataset, long totalItems, String computedStatus) {
         return DatasetResponse.builder()
                 .datasetId(dataset.getDatasetId())
                 .name(dataset.getName())
                 .status(dataset.getStatus())
+                .computedStatus(computedStatus)
                 .createdAt(dataset.getCreatedAt())
                 .projectId(dataset.getProject().getProjectId())
                 .totalItems(totalItems)
@@ -265,5 +289,30 @@ public class DatasetService {
                 .height(item.getHeight())
                 .isActive(item.getIsActive())
                 .build();
+    }
+
+    private String computeDatasetStatus(Map<AssignmentStatus, Long> statusCounts) {
+        if (statusCounts == null || statusCounts.isEmpty()) {
+            return BatchStatus.PENDING.name();
+        }
+
+        long totalAssignments = statusCounts.values().stream().mapToLong(Long::longValue).sum();
+        long completedAssignments = statusCounts.getOrDefault(AssignmentStatus.APPROVED, 0L)
+                + statusCounts.getOrDefault(AssignmentStatus.COMPLETED, 0L);
+        long rejectedAssignments = statusCounts.getOrDefault(AssignmentStatus.REJECTED, 0L);
+        long activeAssignments = statusCounts.getOrDefault(AssignmentStatus.IN_PROGRESS, 0L)
+                + statusCounts.getOrDefault(AssignmentStatus.SUBMITTED, 0L)
+                + statusCounts.getOrDefault(AssignmentStatus.RE_SUBMITTED, 0L);
+
+        if (totalAssignments > 0 && completedAssignments == totalAssignments) {
+            return BatchStatus.COMPLETED.name();
+        }
+        if (rejectedAssignments > 0) {
+            return "REJECTED";
+        }
+        if (activeAssignments > 0) {
+            return BatchStatus.IN_PROGRESS.name();
+        }
+        return BatchStatus.PENDING.name();
     }
 }
