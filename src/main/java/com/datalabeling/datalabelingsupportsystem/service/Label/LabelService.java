@@ -19,9 +19,9 @@ public class LabelService {
 
     @Transactional
     public LabelResponse createLabel(CreateLabelRequest request) {
-        // Validate unique label name
-        if (labelRepository.findByLabelName(request.getLabelName()).isPresent()) {
-            throw new RuntimeException("Label name already exists");
+        // Validate unique label name + type combination
+        if (labelRepository.findByLabelNameAndLabelType(request.getLabelName(), request.getLabelType()).isPresent()) {
+            throw new RuntimeException("Label with this name and type already exists");
         }
 
         // Validate unique shortcut key

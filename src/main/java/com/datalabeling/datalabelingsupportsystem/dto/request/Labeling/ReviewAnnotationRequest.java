@@ -22,4 +22,7 @@ public class ReviewAnnotationRequest {
 
     // chỉ bắt buộc khi hasError == true
     private Long policyId;
+
+    // Ghi chú của reviewer khi reject (tùy chọn)
+    private String note;
 }

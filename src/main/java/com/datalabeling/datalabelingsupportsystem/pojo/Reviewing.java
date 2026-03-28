@@ -52,4 +52,10 @@ public class Reviewing {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "policy_id")
     private Policy policy;
+
+    /**
+     * Ghi chú của reviewer khi reject (nếu có)
+     */
+    @Column(name = "note", columnDefinition = "TEXT")
+    private String note;
 }

@@ -24,4 +24,7 @@ public class AnnotationResponse {
     // policy vi phạm, null nếu annotation chấp nhận
     private Long policyId;
     private String policyName;
+
+    // Ghi chú của reviewer
+    private String note;
 }

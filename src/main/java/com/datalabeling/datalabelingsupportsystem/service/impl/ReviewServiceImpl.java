@@ -197,7 +197,7 @@ public class ReviewServiceImpl implements ReviewService {
                 Reviewing reviewing = reviewingRepository.findById(reviewingId)
                                 .orElseThrow(() -> new ResourceNotFoundException("Annotation not found"));
 
-                getAssignment(reviewerId, reviewing);
+                Assignment assignment = getAssignment(reviewerId, reviewing);
 
                 // cập nhật trạng thái và policy
                 if (Boolean.TRUE.equals(request.getHasError())) {
@@ -208,6 +208,14 @@ public class ReviewServiceImpl implements ReviewService {
                                         .orElseThrow(() -> new ResourceNotFoundException("Policy not found"));
                         reviewing.setPolicy(policy);
                         reviewing.setStatus(ReviewingStatus.REJECTED);
+                        reviewing.setIsImproved(false);  // ✅ Reset isImproved khi reject
+
+                        // 🔴 IMPORTANT: Cập nhật assignment status ngay lập tức khi có reject
+                        // Để annotator biết ngay có lỗi cần sửa, không phải chờ reviewer submit
+                        if (assignment.getStatus() != AssignmentStatus.REJECTED) {
+                                assignment.setStatus(AssignmentStatus.REJECTED);
+                                assignmentRepository.save(assignment);
+                        }
                 } else {
                         // không có lỗi: approve
                         reviewing.setPolicy(null);
@@ -218,6 +226,7 @@ public class ReviewServiceImpl implements ReviewService {
                 User reviewer = userRepository.findById(reviewerId)
                                 .orElseThrow(() -> new ResourceNotFoundException("Reviewer not found"));
                 reviewing.setReviewer(reviewer);
+                reviewing.setNote(request.getNote());  // ✅ Lưu ghi chú của reviewer
                 reviewing = reviewingRepository.save(reviewing);
                 return toAnnotationResponse(reviewing);
         }
@@ -341,6 +350,7 @@ public class ReviewServiceImpl implements ReviewService {
                                 .reviewerName(r.getReviewer() != null ? r.getReviewer().getFullName() : null)
                                 .policyId(r.getPolicy() != null ? r.getPolicy().getPolicyId() : null)
                                 .policyName(r.getPolicy() != null ? r.getPolicy().getErrorName() : null)
+                                .note(r.getNote())
                                 .build();
         }
 }

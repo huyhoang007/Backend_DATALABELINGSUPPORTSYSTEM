@@ -469,6 +469,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 .reviewerName(r.getReviewer() != null ? r.getReviewer().getFullName() : null)
                                 .policyId(r.getPolicy() != null ? r.getPolicy().getPolicyId() : null)
                                 .policyName(r.getPolicy() != null ? r.getPolicy().getErrorName() : null)
+                                .note(r.getNote())
                                 .build();
         }
 }
