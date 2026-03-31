@@ -16,6 +16,7 @@ public class ProjectResponse {
     private String name;
     private String dataType;
     private String status;
+    private String computedDisplayStatus;
     private String description;
     private String guidelineContent;
     private String guidelineVersion;
@@ -23,4 +24,9 @@ public class ProjectResponse {
     private String managerName;
     private Long managerId;
     private LocalDateTime createdAt;
+    private Long assignmentCount;
+    private Long approvedAssignmentCount;
+    private Long inProgressAssignmentCount;
+    private Long rejectedAssignmentCount;
+    private Long datasetCount;
 }
