@@ -59,7 +59,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 }
             } catch (JwtException e) {
                 // Token hết hạn hoặc không hợp lệ — để Spring Security trả về 401
-                logger.warn("Invalid or expired JWT token: " + e.getMessage());
+                logger.warn("Token JWT không hợp lệ hoặc đã hết hạn: " + e.getMessage());
             }
         }
 

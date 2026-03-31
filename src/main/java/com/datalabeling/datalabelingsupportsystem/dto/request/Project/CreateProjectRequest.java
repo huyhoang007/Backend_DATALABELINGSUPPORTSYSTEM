@@ -7,11 +7,11 @@ import lombok.Data;
 @Data
 public class CreateProjectRequest {
 
-    @NotBlank(message = "Project name is required")
+    @NotBlank(message = "Tên dự án là bắt buộc")
     private String name;
 
-    @NotBlank(message = "Data type is required")
-    @Pattern(regexp = "IMAGE|VIDEO|TEXT|AUDIO", message = "Data type must be IMAGE, VIDEO, TEXT, or AUDIO")
+    @NotBlank(message = "Loại dữ liệu là bắt buộc")
+    @Pattern(regexp = "IMAGE", message = "Loại dữ liệu phải là IMAGE")
     private String dataType;
 
     private String description;

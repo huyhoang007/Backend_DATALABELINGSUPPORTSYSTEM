@@ -8,18 +8,18 @@ import lombok.Data;
 @Data
 public class CreateLabelRequest {
 
-    @NotBlank(message = "Label name is required")
+    @NotBlank(message = "Tên nhãn là bắt buộc")
     private String labelName;
 
-    @NotBlank(message = "Color code is required")
-    @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Invalid color code format")
+    @NotBlank(message = "Mã màu là bắt buộc")
+    @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Định dạng mã màu không hợp lệ")
     private String colorCode;
 
-    @NotBlank(message = "Label type is required")
+    @NotBlank(message = "Loại nhãn là bắt buộc")
     private String labelType;
 
     private String description;
 
-    @Size(max = 20, message = "Hotkey must not exceed 20 characters")
+    @Size(max = 20, message = "Phím tắt không được vượt quá 20 ký tự")
     private String shortcutKey;
 }

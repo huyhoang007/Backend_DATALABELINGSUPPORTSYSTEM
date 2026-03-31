@@ -11,17 +11,17 @@ import java.util.List;
 @Data
 public class BatchSaveAnnotationRequest {
 
-    @NotNull(message = "itemId is required")
+    @NotNull(message = "itemId là bắt buộc")
     private Long itemId;
 
-    @NotEmpty(message = "annotations must not be empty")
+    @NotEmpty(message = "Các chú thích không được trống")
     @Valid
     private List<AnnotationItem> annotations;
 
     @Data
     public static class AnnotationItem {
 
-        @NotNull(message = "labelId is required")
+        @NotNull(message = "labelId là bắt buộc")
         private Long labelId;
 
         // geometry có thể null (classification task không cần vùng)

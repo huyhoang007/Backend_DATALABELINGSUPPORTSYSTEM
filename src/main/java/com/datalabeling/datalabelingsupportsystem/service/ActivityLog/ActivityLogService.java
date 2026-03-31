@@ -30,32 +30,32 @@ public class ActivityLogService {
     @Transactional
     public void logActivity(String action, String target, String details) {
         try {
-            log.info("========== START logActivity ==========");
-            log.info("Action: {}, Target: {}, Details: {}", action, target, details);
+            log.info("========== BẮT ĐẦU logActivity ==========");
+            log.info("Hành động: {}, Mục tiêu: {}, Chi tiết: {}", action, target, details);
             
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             
             if (authentication == null) {
-                log.error("❌ Authentication is NULL");
+                log.error("❄ Authentication là NULL");
                 return;
             }
             
-            log.info("Authentication: {}", authentication);
-            log.info("Principal: {}", authentication.getPrincipal());
-            log.info("Is Authenticated: {}", authentication.isAuthenticated());
+            log.info("Xác thực: {}", authentication);
+            log.info("Người dùng: {}", authentication.getPrincipal());
+            log.info("Được xác thực: {}", authentication.isAuthenticated());
             
             if (authentication.isAuthenticated() && !authentication.getPrincipal().equals("anonymousUser")) {
                 String username = authentication.getName();
-                log.info("✅ Username from auth: {}", username);
+                log.info("✋ Username từ auth: {}", username);
                 
                 User user = userRepository.findByUsername(username).orElse(null);
                 
                 if (user == null) {
-                    log.error("❌ User '{}' NOT FOUND in database", username);
+                    log.error("❄ Người dùng '{}' KHÔNG ĐượC TÌM THẤY trong cơ sở dữ liệu", username);
                     return;
                 }
                 
-                log.info("✅ User found: ID={}, Username={}", user.getUserId(), user.getUsername());
+                log.info("✋ Người dùng tìm thấy: ID={}, Username={}", user.getUserId(), user.getUsername());
                 
                 ActivityLog activityLog = ActivityLog.builder()
                         .user(user)
@@ -64,18 +64,18 @@ public class ActivityLogService {
                         .details(details)
                         .build();
                 
-                log.info("Saving activity log...");
+                log.info("Đang lưu nhật ký hoạt động...");
                 ActivityLog saved = activityLogRepository.save(activityLog);
-                log.info("✅✅✅ Activity log SAVED successfully! ID: {}", saved.getActivityId());
+                log.info("✋✋✋ Nhật ký hoạt động được lưu thành công! ID: {}", saved.getActivityId());
                 
             } else {
-                log.warn("⚠️ User is not authenticated or is anonymous");
+                log.warn("⚠ Người dùng chưa được xác thực hoặc là người dùng ẩn danh");
             }
             
-            log.info("========== END logActivity ==========");
+            log.info("========== KẾT THÚC logActivity ==========");
             
         } catch (Exception e) {
-            log.error("❌❌❌ EXCEPTION in logActivity: {}", e.getMessage(), e);
+            log.error("❄❄❄ EXCEPTION trong logActivity: {}", e.getMessage(), e);
         }
     }
     
@@ -87,7 +87,7 @@ public class ActivityLogService {
     
     public Page<ActivityLogResponse> getLogsByUser(Long userId, int page, int size) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Người dùng không được tìm thấy"));
         Pageable pageable = PageRequest.of(page, size);
         return activityLogRepository.findByUserOrderByCreatedAtDesc(user, pageable)
                 .map(this::mapToResponse);

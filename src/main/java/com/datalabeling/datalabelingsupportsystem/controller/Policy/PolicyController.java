@@ -91,7 +91,7 @@ public class PolicyController {
     )
     public ResponseEntity<String> deletePolicy(@PathVariable Long policyId) {
         policyService.deletePolicy(policyId);
-        return ResponseEntity.ok("Policy deleted successfully");
+        return ResponseEntity.ok("Xóa chính sách thành công");
     }
     
     @PostMapping("/assign")
@@ -104,7 +104,7 @@ public class PolicyController {
             @RequestParam Long projectId,
             @RequestParam Long policyId) {
         policyService.assignPolicyToProject(projectId, policyId);
-        return ResponseEntity.ok("Policy assigned to project successfully");
+        return ResponseEntity.ok("Gán chính sách cho dự án thành công");
     }
     
     @DeleteMapping("/remove")
@@ -117,7 +117,7 @@ public class PolicyController {
             @RequestParam Long projectId,
             @RequestParam Long policyId) {
         policyService.removePolicyFromProject(projectId, policyId);
-        return ResponseEntity.ok("Policy removed from project successfully");
+        return ResponseEntity.ok("Gỡ bỏ chính sách khỏi dự án thành công");
     }
     
     @GetMapping("/project/{projectId}")

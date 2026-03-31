@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreatePolicyRequest {
     
-    @NotBlank(message = "Error name is required")
+    @NotBlank(message = "Tên lỗi là bắt buộc")
     private String errorName;
     
     private String description;

@@ -39,11 +39,11 @@ public class AzureBlobService {
                 containerClient.create();
             }
             azureEnabled = true;
-            log.info("[AzureBlob] Connected to container: {}", containerName);
+            log.info("[Azure Blob] Đã kết nối với container: {}", containerName);
         } else {
             containerClient = null;
             azureEnabled = false;
-            log.info("[AzureBlob] No connection string — using local disk: {}", uploadPath);
+            log.info("[Azure Blob] Không có chuỗi kết nối — sử dụng đĩa cứng cục bộ: {}", uploadPath);
         }
     }
 

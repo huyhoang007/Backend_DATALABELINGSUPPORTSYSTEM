@@ -53,11 +53,11 @@ public class DatasetService {
     public DatasetResponse createDataset(Long projectId, String batchName, List<MultipartFile> files)
             throws IOException {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
+                .orElseThrow(() -> new RuntimeException("Dự án không được tìm thấy với id: " + projectId));
 
         // Kiểm tra project status: không được upload data vào project COMPLETED
         if ("COMPLETED".equalsIgnoreCase(project.getStatus())) {
-            throw new RuntimeException("Project is COMPLETED and locked. Only export operations are allowed.");
+            throw new RuntimeException("Dự án đã HOÀN THÀNH và bị khóa. Chỉ cho phép các hoạt động xuất.");
         }
 
         // Tạo Dataset với status PENDING
@@ -82,7 +82,7 @@ public class DatasetService {
      */
     public List<DatasetResponse> getDatasetsByProject(Long projectId) {
         if (!projectRepository.existsById(projectId)) {
-            throw new RuntimeException("Project not found with id: " + projectId);
+            throw new RuntimeException("Dự án không được tìm thấy với id: " + projectId);
         }
 
         return datasetRepository.findByProject_ProjectId(projectId)
@@ -98,7 +98,7 @@ public class DatasetService {
      */
     public List<DataItemResponse> getActiveItemsByDataset(Long datasetId) {
         if (!datasetRepository.existsById(datasetId)) {
-            throw new RuntimeException("Dataset not found with id: " + datasetId);
+            throw new RuntimeException("Bộ dữ liệu không được tìm thấy với id: " + datasetId);
         }
 
         return dataItemRepository.findByDataset_DatasetIdAndIsActiveTrue(datasetId)
@@ -115,11 +115,11 @@ public class DatasetService {
     @Transactional
     public DatasetResponse updateDatasetName(Long datasetId, UpdateDatasetRequest request) {
         Dataset dataset = datasetRepository.findById(datasetId)
-                .orElseThrow(() -> new RuntimeException("Dataset not found with id: " + datasetId));
+                .orElseThrow(() -> new RuntimeException("Bộ dữ liệu không được tìm thấy với id: " + datasetId));
 
         if (dataset.getStatus() != BatchStatus.PENDING) {
             throw new RuntimeException(
-                    "Cannot update dataset. Status must be PENDING, current status: " + dataset.getStatus());
+                    "Không thể cập nhật bộ dữ liệu. Trạng thái phải là PENDING, trạng thái hiện tại: " + dataset.getStatus());
         }
 
         dataset.setName(request.getBatchName());
@@ -136,11 +136,11 @@ public class DatasetService {
     @Transactional
     public DatasetResponse addItemsToDataset(Long datasetId, List<MultipartFile> files) throws IOException {
         Dataset dataset = datasetRepository.findById(datasetId)
-                .orElseThrow(() -> new RuntimeException("Dataset not found with id: " + datasetId));
+                .orElseThrow(() -> new RuntimeException("Bộ dữ liệu không được tìm thấy với id: " + datasetId));
 
         // Kiểm tra project status: không được thêm data vào project COMPLETED
         if ("COMPLETED".equalsIgnoreCase(dataset.getProject().getStatus())) {
-            throw new RuntimeException("Project is COMPLETED and locked. Only export operations are allowed.");
+            throw new RuntimeException("Dự án đã HOÀN THÀNH và bị khóa. Chỉ cho phép các hoạt động xuất.");
         }
 
         List<DataItem> newItems = uploadAndCreateItems(files, dataset);
@@ -157,7 +157,7 @@ public class DatasetService {
     @Transactional
     public void softDeleteItem(Long itemId) {
         DataItem item = dataItemRepository.findById(itemId)
-                .orElseThrow(() -> new RuntimeException("DataItem not found with id: " + itemId));
+                .orElseThrow(() -> new RuntimeException("DataItem không được tìm thấy với id: " + itemId));
 
         item.setIsActive(false);
         dataItemRepository.save(item);

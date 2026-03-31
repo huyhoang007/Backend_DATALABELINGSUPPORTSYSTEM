@@ -145,7 +145,7 @@ public class ProjectAnalyticsService {
     public ContributionResponse getUserContribution(Long projectId, Long userId) {
         Project project = getProjectAndValidateAccess(projectId);
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Người dùng không được tìm thấy"));
         
         long totalAssignments = analyticsRepository.countTotalAssignmentsByUser(userId);
         long completedAssignments = analyticsRepository.countCompletedAssignmentsByUser(userId);
@@ -244,16 +244,16 @@ public class ProjectAnalyticsService {
     
     private Project getProjectAndValidateAccess(Long projectId) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new RuntimeException("Dự án không được tìm thấy"));
         
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
         User currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Người dùng không được tìm thấy"));
         
         // Only manager can access analytics
         if (!project.getManager().getUserId().equals(currentUser.getUserId())) {
-            throw new RuntimeException("Only project manager can access analytics");
+            throw new RuntimeException("Chỉ quản lý dự án mới có thể truy cập phân tích");
         }
         
         return project;

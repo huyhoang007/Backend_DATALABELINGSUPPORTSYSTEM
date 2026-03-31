@@ -53,7 +53,7 @@ public class DatasetExportService {
     @Transactional(readOnly = true)
     public DatasetExportResponse buildExport(Long datasetId, ReviewingStatus statusFilter) {
         Dataset dataset = datasetRepository.findById(datasetId)
-                .orElseThrow(() -> new ResourceNotFoundException("Dataset not found: " + datasetId));
+                .orElseThrow(() -> new ResourceNotFoundException("Bộ dữ liệu không được tìm thấy: " + datasetId));
 
         // Lấy tất cả DataItem thuộc dataset (kể cả inactive - để export đầy đủ lịch sử)
         List<DataItem> items = dataItemRepository.findByDataset_DatasetId(datasetId);
@@ -193,7 +193,7 @@ public class DatasetExportService {
     @Transactional(readOnly = true)
     public byte[] buildCocoJson(Long datasetId, ReviewingStatus statusFilter) throws IOException {
         Dataset dataset = datasetRepository.findById(datasetId)
-                .orElseThrow(() -> new ResourceNotFoundException("Dataset not found: " + datasetId));
+                .orElseThrow(() -> new ResourceNotFoundException("Bộ dữ liệu không được tìm thấy: " + datasetId));
 
         List<DataItem> items = dataItemRepository.findByDataset_DatasetId(datasetId);
         List<Reviewing> reviewings = statusFilter != null
@@ -297,7 +297,7 @@ public class DatasetExportService {
     @Transactional(readOnly = true)
     public byte[] buildYoloZip(Long datasetId, ReviewingStatus statusFilter) throws IOException {
         Dataset dataset = datasetRepository.findById(datasetId)
-                .orElseThrow(() -> new ResourceNotFoundException("Dataset not found: " + datasetId));
+                .orElseThrow(() -> new ResourceNotFoundException("Bộ dữ liệu không được tìm thấy: " + datasetId));
 
         List<DataItem> items = dataItemRepository.findByDataset_DatasetId(datasetId);
         List<Reviewing> reviewings = statusFilter != null
@@ -368,7 +368,7 @@ public class DatasetExportService {
     @Transactional(readOnly = true)
     public byte[] buildPascalVocZip(Long datasetId, ReviewingStatus statusFilter) throws IOException {
         Dataset dataset = datasetRepository.findById(datasetId)
-                .orElseThrow(() -> new ResourceNotFoundException("Dataset not found: " + datasetId));
+                .orElseThrow(() -> new ResourceNotFoundException("Bộ dữ liệu không được tìm thấy: " + datasetId));
 
         List<DataItem> items = dataItemRepository.findByDataset_DatasetId(datasetId);
         List<Reviewing> reviewings = statusFilter != null

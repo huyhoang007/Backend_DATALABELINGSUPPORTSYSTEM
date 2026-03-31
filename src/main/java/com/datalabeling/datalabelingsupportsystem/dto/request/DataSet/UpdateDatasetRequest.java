@@ -5,6 +5,6 @@ import lombok.Data;
 
 @Data
 public class UpdateDatasetRequest {
-    @NotBlank(message = "Batch name is required")
+    @NotBlank(message = "Tên batch là bắt buộc")
     private String batchName;
 }

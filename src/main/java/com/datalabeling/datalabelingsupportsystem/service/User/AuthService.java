@@ -58,26 +58,26 @@ public class AuthService {
     public UserResponse register(RegisterRequest request) {
         // Input validation
         if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
-            throw new ValidationException("Username is required");
+            throw new ValidationException("Tên đăng nhập được yêu cầu");
         }
         if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
-            throw new ValidationException("Email is required");
+            throw new ValidationException("Email được yêu cầu");
         }
         if (request.getPassword() == null || request.getPassword().length() < 6) {
-            throw new ValidationException("Password must be at least 6 characters");
+            throw new ValidationException("Mật khẩu phải có ít nhất 6 ký tự");
         }
 
         // Check duplicates
         if (userRepository.existsByUsername(request.getUsername())) {
-            log.warn("Registration failed: username already exists - {}", request.getUsername());
+            log.warn("Đăng ký thất bại: tên đăng nhập đã tồn tại - {}", request.getUsername());
             throw new DuplicateResourceException("USERNAME_ALREADY_EXISTS");
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            log.warn("Registration failed: email already exists - {}", request.getEmail());
+            log.warn("Đăng ký thất bại: email đã tồn tại - {}", request.getEmail());
             throw new DuplicateResourceException("EMAIL_ALREADY_EXISTS");
         }
 
-        log.info("Registering new user: {}, requested role: {}", request.getUsername(), request.getRole());
+        log.info("Đăng ký người dùng mới: {}, vai trò được yêu cầu: {}", request.getUsername(), request.getRole());
 
         // Role Logic
         String targetRoleName = "ANNOTATOR"; // Default
@@ -86,14 +86,14 @@ public class AuthService {
             if (ALLOWED_ROLES.contains(requestedRole)) {
                 targetRoleName = requestedRole;
             } else {
-                log.warn("Requested invalid role: {}. Defaulting to ANNOTATOR.", requestedRole);
+                log.warn("Yêu cầu vai trò không hợp lệ: {}. Mặc định là ANNOTATOR.", requestedRole);
                 // Optionally throw validation exception here if strict
             }
         }
 
         String finalTargetRoleName = targetRoleName;
         Role role = roleRepository.findByRoleName(finalTargetRoleName)
-                .orElseThrow(() -> new RuntimeException("Role not found: " + finalTargetRoleName));
+                .orElseThrow(() -> new RuntimeException("Vai trò không được tìm thấy: " + finalTargetRoleName));
 
         User user = User.builder()
                 .username(request.getUsername())
@@ -106,7 +106,7 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
 
-        log.info("User registered successfully: {} with role {}", user.getUsername(), role.getRoleName());
+        log.info("Người dùng đăng ký thành công: {} với vai trò {}", user.getUsername(), role.getRoleName());
         
         return UserResponse.builder()
                 .userId(savedUser.getUserId())
@@ -122,27 +122,27 @@ public class AuthService {
     public AuthResponse login(LoginRequest request) {
         // Validation - accept username OR email
         if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
-            throw new ValidationException("Username or email is required");
+            throw new ValidationException("Tên đăng nhập hoặc email được yêu cầu");
         }
         if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
-            throw new ValidationException("Password is required");
+            throw new ValidationException("Mật khẩu được yêu cầu");
         }
 
         String identifier = request.getUsername().trim();
-        log.info("Login attempt for identifier: {}", identifier);
+        log.info("Đăng nhập cho định danh: {}", identifier);
 
         // Try username first, then email (case-insensitive for email)
         User user = userRepository.findByUsername(identifier)
                 .or(() -> userRepository.findByEmail(identifier.toLowerCase()))
                 .orElseThrow(() -> {
-                    log.warn("Login failed: user not found - {}", identifier);
-                    return new AuthenticationException("Invalid credentials");
+                    log.warn("Đăng nhập thất bại: người dùng không được tìm thấy - {}", identifier);
+                    return new AuthenticationException("Thông tin đăng nhập không hợp lệ");
                 });
 
         // Password verification using BCrypt encoder (consistent with register)
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            log.warn("Login failed: invalid password for user - {}", user.getUsername());
-            throw new AuthenticationException("Invalid credentials");
+            log.warn("Đăng nhập thất bại: mật khẩu không hợp lệ cho người dùng - {}", user.getUsername());
+            throw new AuthenticationException("Thông tin đăng nhập không hợp lệ");
         }
 
         // Kiểm tra status của user
@@ -150,23 +150,23 @@ public class AuthService {
         if (status == null || !"ACTIVE".equals(status)) {
             String message;
             if (status == null) {
-                message = "Your account status is undefined. Please contact administrator.";
+                message = "Trạng thái tài khoản của bạn chưa xác định. Vui lòng liên hệ quản trị viên.";
             } else if ("PENDING".equals(status)) {
-                message = "Your account is pending approval. Please wait for admin to activate your account.";
+                message = "Tài khoản của bạn đang chờ phê duyệt. Vui lòng chờ quản trị viên kích hoạt tài khoản của bạn.";
             } else if ("BANNED".equals(status)) {
-                message = "Your account has been banned. Please contact administrator.";
+                message = "Tài khoản của bạn đã bị cấm. Vui lòng liên hệ quản trị viên.";
             } else if ("REJECTED".equals(status)) {
-                message = "Your account has been rejected. Please contact administrator.";
+                message = "Tài khoản của bạn đã bị từ chối. Vui lòng liên hệ quản trị viên.";
             } else if ("SUSPENDED".equals(status)) {
-                message = "Your account has been suspended. Please contact administrator.";
+                message = "Tài khoản của bạn đã bị tạm dừng. Vui lòng liên hệ quản trị viên.";
             } else {
-                message = "Your account is not active. Please contact administrator.";
+                message = "Tài khoản của bạn không hoạt động. Vui lòng liên hệ quản trị viên.";
             }
             throw new RuntimeException(message);
         }
 
         String token = jwtService.generateToken(user);
-        log.info("Login successful for user: {}", user.getUsername());
+        log.info("Đăng nhập thành công cho người dùng: {}", user.getUsername());
 
         return new AuthResponse(
                 token,

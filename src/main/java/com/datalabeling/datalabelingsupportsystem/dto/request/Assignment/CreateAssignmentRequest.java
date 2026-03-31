@@ -7,12 +7,12 @@ import lombok.Setter;
 @Getter @Setter
 public class CreateAssignmentRequest {
 
-    @NotNull(message = "Dataset ID is required")
+    @NotNull(message = "ID bộ dữ liệu là bắt buộc")
     private Long datasetId;
 
-    @NotNull(message = "Annotator ID is required")
+    @NotNull(message = "ID người lũu ý là bắt buộc")
     private Long annotatorId;
 
-    @NotNull(message = "Reviewer ID is required")
+    @NotNull(message = "ID người duyệt là bắt buộc")
     private Long reviewerId;
 }

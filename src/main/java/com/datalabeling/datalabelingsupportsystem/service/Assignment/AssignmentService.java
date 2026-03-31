@@ -39,15 +39,15 @@ public class AssignmentService {
 
         // Kiểm tra project tồn tại và manager có quyền
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+                .orElseThrow(() -> new RuntimeException("Dự án không được tìm thấy: " + projectId));
 
         if (!project.getManager().getUserId().equals(managerId)) {
-            throw new RuntimeException("You are not the manager of this project");
+            throw new RuntimeException("Bạn không phải là quản lý của dự án này");
         }
 
         // Kiểm tra project status: không được phân công cho project COMPLETED
         if ("COMPLETED".equalsIgnoreCase(project.getStatus())) {
-            throw new RuntimeException("Project is COMPLETED and locked. Only export operations are allowed.");
+            throw new RuntimeException("Dự án đã HOÀN THÀNH và bị khóa. Chỉ cho phép các hoạt động xuất.");
         }
 
         // Kiểm tra project có label rules và policies
@@ -63,32 +63,32 @@ public class AssignmentService {
 
         // Kiểm tra dataset thuộc project
         Dataset dataset = datasetRepository.findById(request.getDatasetId())
-                .orElseThrow(() -> new RuntimeException("Dataset not found: " + request.getDatasetId()));
+                .orElseThrow(() -> new RuntimeException("Bộ dữ liệu không được tìm thấy: " + request.getDatasetId()));
 
         if (!dataset.getProject().getProjectId().equals(projectId)) {
-            throw new RuntimeException("Dataset does not belong to this project");
+            throw new RuntimeException("Bộ dữ liệu không thuộc dự án này");
         }
 
         // Kiểm tra annotator
         User annotator = userRepository.findById(request.getAnnotatorId())
-                .orElseThrow(() -> new RuntimeException("Annotator not found: " + request.getAnnotatorId()));
+                .orElseThrow(() -> new RuntimeException("Người chú thích không được tìm thấy: " + request.getAnnotatorId()));
 
         if (!"ANNOTATOR".equalsIgnoreCase(annotator.getRole().getRoleName())) {
-            throw new RuntimeException("User " + annotator.getUsername() + " is not an ANNOTATOR");
+            throw new RuntimeException("Người dùng " + annotator.getUsername() + " không phải là ANNOTATOR");
         }
 
         // Kiểm tra reviewer
         User reviewer = userRepository.findById(request.getReviewerId())
-                .orElseThrow(() -> new RuntimeException("Reviewer not found: " + request.getReviewerId()));
+                .orElseThrow(() -> new RuntimeException("Người xem xét không được tìm thấy: " + request.getReviewerId()));
 
         if (!"REVIEWER".equalsIgnoreCase(reviewer.getRole().getRoleName())) {
-            throw new RuntimeException("User " + reviewer.getUsername() + " is not a REVIEWER");
+            throw new RuntimeException("Người dùng " + reviewer.getUsername() + " không phải là REVIEWER");
         }
 
         // Kiểm tra dataset đã được assign chưa
         if (assignmentRepository.existsByDataset_DatasetIdAndAnnotator_UserId(
                 request.getDatasetId(), request.getAnnotatorId())) {
-            throw new RuntimeException("This dataset is already assigned to this annotator");
+            throw new RuntimeException("Bộ dữ liệu này đã được gán cho người chú thích này");
         }
 
         Assignment assignment = Assignment.builder()
@@ -109,10 +109,10 @@ public class AssignmentService {
      */
     public List<AssignmentResponse> getAssignmentsByProject(Long projectId, Long managerId) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+                .orElseThrow(() -> new RuntimeException("Dự án không được tìm thấy: " + projectId));
 
         if (!project.getManager().getUserId().equals(managerId)) {
-            throw new RuntimeException("You are not the manager of this project");
+            throw new RuntimeException("Bạn không phải là quản lý của dự án này");
         }
 
         return assignmentRepository.findByProject_ProjectId(projectId)
@@ -127,14 +127,14 @@ public class AssignmentService {
     @Transactional
     public void deleteAssignment(Long assignmentId, Long managerId) {
         Assignment assignment = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new RuntimeException("Assignment not found: " + assignmentId));
+                .orElseThrow(() -> new RuntimeException("Phân công không được tìm thấy: " + assignmentId));
 
         if (!assignment.getProject().getManager().getUserId().equals(managerId)) {
-            throw new RuntimeException("You are not the manager of this project");
+            throw new RuntimeException("Bạn không phải là quản lý của dự án này");
         }
 
         if (assignment.getStatus() != AssignmentStatus.PENDING) {
-            throw new RuntimeException("Cannot delete assignment with status: " + assignment.getStatus());
+            throw new RuntimeException("Không thể xóa phân công với trạng thái: " + assignment.getStatus());
         }
 
         assignmentRepository.delete(assignment);

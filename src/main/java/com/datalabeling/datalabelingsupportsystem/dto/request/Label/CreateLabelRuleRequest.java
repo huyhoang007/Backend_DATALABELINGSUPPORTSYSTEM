@@ -13,6 +13,6 @@ public class CreateLabelRuleRequest {
 
     private String ruleContent;
 
-    @NotEmpty(message = "At least one label must be provided")
+    @NotEmpty(message = "Phải cung cấp ít nhất một nhãn")
     private Set<Long> labelIds;
 }

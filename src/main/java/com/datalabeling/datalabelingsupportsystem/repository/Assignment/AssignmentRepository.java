@@ -23,4 +23,7 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
     List<Assignment> findByReviewer_UserId(Long reviewerId);
 
     boolean existsByDataset_DatasetIdAndAnnotator_UserId(Long datasetId, Long annotatorId);
+
+    // Dataset queries
+    List<Assignment> findByDataset_DatasetId(Long datasetId);
 }

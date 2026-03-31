@@ -10,7 +10,7 @@ import java.util.List;
 @Data
 public class AddItemsRequest {
 
-    @NotEmpty(message = "Files must not be empty")
+    @NotEmpty(message = "Tệp không được trống")
     @Schema(description = "Danh sách file ảnh bổ sung", type = "array", format = "binary")
     private List<MultipartFile> files;
 }

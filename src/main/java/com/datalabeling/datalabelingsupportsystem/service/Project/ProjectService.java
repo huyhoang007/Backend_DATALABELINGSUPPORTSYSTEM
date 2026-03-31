@@ -32,14 +32,14 @@ public class ProjectService {
         String username = authentication.getName();
 
         User manager = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Manager not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy quản lý"));
 
         if (!"MANAGER".equals(manager.getRole().getRoleName())) {
-            throw new RuntimeException("Only MANAGER can create projects");
+            throw new RuntimeException("Chỉ MANAGER mới có thể tạo dự án");
         }
 
         if (projectRepository.existsByNameAndManagerUserId(request.getName(), manager.getUserId())) {
-            throw new RuntimeException("Project name already exists for this manager");
+            throw new RuntimeException("Tên dự án đã tồn tại cho quản lý này");
         }
 
         Project project = Project.builder()
@@ -64,7 +64,7 @@ public class ProjectService {
         String username = authentication.getName();
 
         User manager = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         List<Project> projects = projectRepository.findByManagerUserId(manager.getUserId());
 
@@ -79,14 +79,14 @@ public class ProjectService {
         String username = authentication.getName();
 
         User manager = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy dự án"));
 
         // Kiểm tra quyền: chỉ manager của project mới được xem
         if (!project.getManager().getUserId().equals(manager.getUserId())) {
-            throw new RuntimeException("You don't have permission to view this project");
+            throw new RuntimeException("Bạn không có quyền xem dự án này");
         }
 
         return mapToResponse(project);
@@ -98,25 +98,25 @@ public class ProjectService {
         String username = authentication.getName();
 
         User manager = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy dự án"));
 
         // Kiểm tra quyền: chỉ manager của project mới được xóa
         if (!project.getManager().getUserId().equals(manager.getUserId())) {
-            throw new RuntimeException("You don't have permission to delete this project");
+            throw new RuntimeException("Bạn không có quyền xóa dự án này");
         }
 
         // Kiểm tra project status: không được xóa project COMPLETED
         if ("COMPLETED".equalsIgnoreCase(project.getStatus())) {
-            throw new RuntimeException("Cannot delete COMPLETED project. Please create a new project or resume from DRAFT status if needed.");
+            throw new RuntimeException("Không thể xóa dự án COMPLETED. Vui lòng tạo một dự án mới hoặc tiếp tục từ trạng thái DRAFT nếu cần.");
         }
 
         // Kiểm tra xem project có assignments hay không
         long assignmentCount = assignmentRepository.findByProject_ProjectId(projectId).size();
         if (assignmentCount > 0) {
-            throw new RuntimeException("Cannot delete project with active assignments. Please remove all assignments first. Current assignments: " + assignmentCount);
+            throw new RuntimeException("Không thể xóa dự án có các bài tập hoạt động. Vui lòng xóa tất cả bài tập trước. Số bài tập hiện tại: " + assignmentCount);
         }
 
         // Soft delete: đổi status thành INACTIVE thay vì xóa hẳn
@@ -130,25 +130,25 @@ public class ProjectService {
         String username = authentication.getName();
 
         User manager = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy dự án"));
 
         // Kiểm tra quyền
         if (!project.getManager().getUserId().equals(manager.getUserId())) {
-            throw new RuntimeException("You don't have permission to update this project");
+            throw new RuntimeException("Bạn không có quyền cập nhật dự án này");
         }
 
         // Validate status: chỉ cho phép DRAFT, IN_PROGRESS, PAUSED, COMPLETED
         if (!List.of("DRAFT", "IN_PROGRESS", "PAUSED", "COMPLETED").contains(status)) {
-            throw new RuntimeException("Invalid status");
+            throw new RuntimeException("Trạng thái không hợp lệ");
         }
 
         // Validate status transition
         String currentStatus = project.getStatus();
         if (!isValidStatusTransition(currentStatus, status)) {
-            throw new RuntimeException("Invalid status transition from " + currentStatus + " to " + status);
+            throw new RuntimeException("Chuyển đổi trạng thái không hợp lệ từ " + currentStatus + " sang " + status);
         }
 
         project.setStatus(status);
@@ -180,20 +180,20 @@ public class ProjectService {
         String username = authentication.getName();
 
         User manager = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy dự án"));
 
         // Kiểm tra quyền
         if (!project.getManager().getUserId().equals(manager.getUserId())) {
-            throw new RuntimeException("You don't have permission to update this project");
+            throw new RuntimeException("Bạn không có quyền cập nhật dự án này");
         }
 
         // Chỉ cho phép update project ở trạng thái DRAFT, IN_PROGRESS, PAUSED
         String currentStatus = project.getStatus();
         if (!List.of("DRAFT", "IN_PROGRESS", "PAUSED").contains(currentStatus)) {
-            throw new RuntimeException("Cannot update project in " + currentStatus + " status. Only DRAFT, IN_PROGRESS, and PAUSED projects can be updated.");
+            throw new RuntimeException("Không thể cập nhật dự án ở trạng thái " + currentStatus + ". Chỉ các dự án DRAFT, IN_PROGRESS và PAUSED mới có thể được cập nhật.");
         }
 
         // Update các trường nếu có giá trị mới
@@ -201,7 +201,7 @@ public class ProjectService {
             // Kiểm tra tên project mới có bị trùng không (trừ chính nó)
             if (!request.getName().equals(project.getName()) &&
                     projectRepository.existsByNameAndManagerUserId(request.getName(), manager.getUserId())) {
-                throw new RuntimeException("Project name already exists for this manager");
+                throw new RuntimeException("Tên dự án đã tồn tại cho quản lý này");
             }
             project.setName(request.getName());
         }
@@ -229,11 +229,11 @@ public class ProjectService {
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             // Validate status
             if (!List.of("DRAFT", "IN_PROGRESS", "PAUSED", "COMPLETED").contains(request.getStatus())) {
-                throw new RuntimeException("Invalid status");
+                throw new RuntimeException("Trạng thái không hợp lệ");
             }
             // Validate status transition
             if (!isValidStatusTransition(currentStatus, request.getStatus())) {
-                throw new RuntimeException("Invalid status transition from " + currentStatus + " to " + request.getStatus());
+                throw new RuntimeException("Chuyển đổi trạng thái không hợp lệ từ " + currentStatus + " sang " + request.getStatus());
             }
             project.setStatus(request.getStatus());
         }
@@ -249,19 +249,19 @@ public class ProjectService {
         String username = authentication.getName();
 
         User manager = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy dự án"));
 
         // Kiểm tra quyền: chỉ manager của project mới được kích hoạt lại
         if (!project.getManager().getUserId().equals(manager.getUserId())) {
-            throw new RuntimeException("You don't have permission to activate this project");
+            throw new RuntimeException("Bạn không có quyền kích hoạt dự án này");
         }
 
         // Kiểm tra project phải ở trạng thái INACTIVE
         if (!"INACTIVE".equals(project.getStatus())) {
-            throw new RuntimeException("Only INACTIVE projects can be activated");
+            throw new RuntimeException("Chỉ các dự án INACTIVE mới có thể được kích hoạt");
         }
 
         // Kích hoạt lại: đổi status thành DRAFT

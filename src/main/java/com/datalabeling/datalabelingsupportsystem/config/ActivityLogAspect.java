@@ -28,7 +28,7 @@ public class ActivityLogAspect {
             String details = buildCreateDetails(target, result, joinPoint.getArgs());
             activityLogService.logActivity("CREATE", target, details);
         } catch (Exception e) {
-            log.error("Failed to log CREATE activity", e);
+            log.error("Không thể ghi nhật ký hoạt động TạO", e);
         }
     }
     
@@ -41,7 +41,7 @@ public class ActivityLogAspect {
             String details = buildUpdateDetails(target, result, joinPoint.getArgs());
             activityLogService.logActivity("UPDATE", target, details);
         } catch (Exception e) {
-            log.error("Failed to log UPDATE activity", e);
+            log.error("Không thể ghi nhật ký hoạt động CậP NHậT", e);
         }
     }
 
@@ -53,7 +53,7 @@ public class ActivityLogAspect {
             String details = buildDeleteDetails(target, joinPoint.getArgs());
             activityLogService.logActivity("DELETE", target, details);
         } catch (Exception e) {
-            log.error("Failed to log DELETE activity", e);
+            log.error("Không thể ghi nhật ký hoạt động XÓA", e);
         }
     }
 
@@ -68,33 +68,33 @@ public class ActivityLogAspect {
         try {
             if (result instanceof ProjectResponse) {
                 ProjectResponse project = (ProjectResponse) result;
-                details.append("Created project '").append(project.getName())
+                details.append("Tạo dự án '").append(project.getName())
                         .append("' (ID: ").append(project.getProjectId())
-                        .append(") with data type: ").append(project.getDataType())
-                        .append(", status: ").append(project.getStatus());
+                        .append(") có loại dữ liệu: ").append(project.getDataType())
+                        .append(", trạng thái: ").append(project.getStatus());
 
                 if (project.getDescription() != null && !project.getDescription().isEmpty()) {
-                    details.append(", description: '")
+                    details.append(", mô tả: '")
                             .append(truncate(project.getDescription(), 50))
                             .append("'");
                 }
 
             } else if (result instanceof LabelResponse) {
                 LabelResponse label = (LabelResponse) result;
-                details.append("Created label '").append(label.getLabelName())
+                details.append("Tạo nhãn '").append(label.getLabelName())
                         .append("' (ID: ").append(label.getLabelId())
-                        .append(") with type: ").append(label.getLabelType())
-                        .append(", color: ").append(label.getColorCode());
+                        .append(") có loại: ").append(label.getLabelType())
+                        .append(", màu: ").append(label.getColorCode());
 
                 if (label.getDescription() != null && !label.getDescription().isEmpty()) {
-                    details.append(", description: '")
+                    details.append(", mô tả: '")
                             .append(truncate(label.getDescription(), 50))
                             .append("'");
                 }
 
             } else {
                 // Fallback: Thử lấy thông tin từ request
-                details.append("Created ").append(target.toLowerCase());
+                details.append("Tạo ").append(target.toLowerCase());
 
                 if (args.length > 0) {
                     if (args[0] instanceof CreateProjectRequest) {
@@ -107,8 +107,8 @@ public class ActivityLogAspect {
                 }
             }
         } catch (Exception e) {
-            log.warn("Could not build detailed message for CREATE", e);
-            details.append("Created ").append(target.toLowerCase());
+            log.warn("Không thể xây dựng thông báo chi tiết cho hoạt động TạO", e);
+            details.append("Tạo ").append(target.toLowerCase());
         }
 
         return details.toString();
@@ -120,38 +120,38 @@ public class ActivityLogAspect {
         try {
             if (result instanceof ProjectResponse) {
                 ProjectResponse project = (ProjectResponse) result;
-                details.append("Updated project '").append(project.getName())
+                details.append("Cập nhật dự án '").append(project.getName())
                         .append("' (ID: ").append(project.getProjectId())
-                        .append(") - Current status: ").append(project.getStatus())
-                        .append(", data type: ").append(project.getDataType());
+                        .append(") - Trạng thái hiện tại: ").append(project.getStatus())
+                        .append(", loại dữ liệu: ").append(project.getDataType());
 
             } else if (result instanceof LabelResponse) {
                 LabelResponse label = (LabelResponse) result;
-                details.append("Updated label '").append(label.getLabelName())
+                details.append("Cập nhật nhãn '").append(label.getLabelName())
                         .append("' (ID: ").append(label.getLabelId())
-                        .append(") - Type: ").append(label.getLabelType())
-                        .append(", color: ").append(label.getColorCode());
+                        .append(") - Loại: ").append(label.getLabelType())
+                        .append(", màu: ").append(label.getColorCode());
 
             } else {
                 // Fallback
-                details.append("Updated ").append(target.toLowerCase());
+                details.append("Cập nhật ").append(target.toLowerCase());
                 if (args.length > 0 && args[0] instanceof Long) {
-                    details.append(" with ID: ").append(args[0]);
+                    details.append(" với ID: ").append(args[0]);
                 }
             }
         } catch (Exception e) {
-            log.warn("Could not build detailed message for UPDATE", e);
-            details.append("Updated ").append(target.toLowerCase());
+            log.warn("Không thể xây dựng thông báo chi tiết cho hoạt động CậP NHậT", e);
+            details.append("Cập nhật ").append(target.toLowerCase());
         }
 
         return details.toString();
     }
 
     private String buildDeleteDetails(String target, Object[] args) {
-        StringBuilder details = new StringBuilder("Deleted ").append(target.toLowerCase());
+        StringBuilder details = new StringBuilder("Đã xoá ").append(target.toLowerCase());
 
         if (args.length > 0 && args[0] instanceof Long) {
-            details.append(" with ID: ").append(args[0]);
+            details.append(" có ID: ").append(args[0]);
         }
 
         return details.toString();

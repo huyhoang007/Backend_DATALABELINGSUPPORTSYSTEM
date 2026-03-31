@@ -10,12 +10,14 @@ import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.Annotati
 import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.AnnotatorAssignmentResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.WorkSpace.AnnotationWorkspaceResponse;
 import com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus;
+import com.datalabeling.datalabelingsupportsystem.enums.DataSet.BatchStatus;
 import com.datalabeling.datalabelingsupportsystem.enums.Reviewing.ReviewingStatus;
 import com.datalabeling.datalabelingsupportsystem.exception.ResourceNotFoundException;
 import com.datalabeling.datalabelingsupportsystem.exception.ValidationException;
 import com.datalabeling.datalabelingsupportsystem.pojo.*;
 import com.datalabeling.datalabelingsupportsystem.repository.Assignment.AssignmentRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DataItemRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DatasetRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRuleRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Labeling.ReviewingRepository;
@@ -42,6 +44,7 @@ public class AnnotationServiceImpl implements AnnotationService {
         private final LabelRuleRepository labelRuleRepository;
         private final ObjectMapper objectMapper;
         private final ProjectRepository projectRepository;
+        private final DatasetRepository datasetRepository;
 
         // 1. LẤY DANH SÁCH TASK CỦA ANNOTATOR
         @Override
@@ -72,7 +75,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                 Assignment assignment = assignmentRepository
                                 .findByAssignmentIdAndAnnotator_UserId(assignmentId, annotatorId)
                                 .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Assignment not found or access denied"));
+                                                "Phân công không được tìm thấy hoặc truy cập bị từ chối"));
 
                 // Allow APPROVED assignments to be viewed in read-only mode
                 // No longer throw exception here - isReadOnly check on frontend will prevent edits
@@ -81,9 +84,11 @@ public class AnnotationServiceImpl implements AnnotationService {
                         assignment.setStatus(AssignmentStatus.IN_PROGRESS);
                         assignmentRepository.save(assignment);
                         syncProjectToInProgress(assignment.getProject());
+                        syncDatasetToInProgress(assignment.getDataset());
                 } else if (assignment.getStatus() == AssignmentStatus.IN_PROGRESS
                                 || assignment.getStatus() == AssignmentStatus.REJECTED) {
                         syncProjectToInProgress(assignment.getProject());
+                        syncDatasetToInProgress(assignment.getDataset());
                 }
                 // RE_SUBMITTED: workspace mở read-only, không đổi status
                 // APPROVED: workspace mở read-only, không đổi status
@@ -177,7 +182,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                 Assignment assignment = assignmentRepository
                                 .findByAssignmentIdAndAnnotator_UserId(assignmentId, annotatorId)
                                 .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Assignment not found or access denied"));
+                                                "Phân công không được tìm thấy hoặc truy cập bị từ chối"));
 
                 // Kiểm tra xem có được phép sửa không
                 checkCanEdit(assignment);
@@ -186,8 +191,8 @@ public class AnnotationServiceImpl implements AnnotationService {
                 if (assignment.getStatus() != AssignmentStatus.IN_PROGRESS
                                 && assignment.getStatus() != AssignmentStatus.PENDING) {
                         throw new ValidationException(
-                                        "Can only edit annotations when assignment is IN_PROGRESS. " +
-                                                        "If assignment is REJECTED, use the fix-rejected endpoint.");
+                                        "Chỉ có thể chỉnh sửa chú thích khi phân công là IN_PROGRESS. " +
+                                                        "Nếu phân công bị REJECTED, hãy sử dụng endpoints sửa lại.");
                 }
 
                 if (assignment.getStatus() == AssignmentStatus.PENDING) {
@@ -196,7 +201,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                 }
 
                 DataItem item = dataItemRepository.findById(request.getItemId())
-                                .orElseThrow(() -> new ResourceNotFoundException("DataItem not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mục dữ liệu"));
 
                 // Xóa hết annotations cũ của item này
                 reviewingRepository.deleteAll(
@@ -222,17 +227,17 @@ public class AnnotationServiceImpl implements AnnotationService {
                 Assignment assignment = assignmentRepository
                                 .findByAssignmentIdAndAnnotator_UserId(assignmentId, annotatorId)
                                 .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Assignment not found or access denied"));
+                                                "Phân công không được tìm thấy hoặc truy cập bị từ chối"));
 
                 // Chỉ cho phép khi assignment bị REJECTED
                 if (assignment.getStatus() != AssignmentStatus.REJECTED) {
                         throw new ValidationException(
-                                        "This endpoint is only for fixing rejected assignments. " +
-                                                        "Current status: " + assignment.getStatus());
+                                        "Endpoint này chỉ dành cho việc sửa lại phân công bị từ chối. " +
+                                                        "Trạng thái hiện tại: " + assignment.getStatus());
                 }
 
                 DataItem item = dataItemRepository.findById(request.getItemId())
-                                .orElseThrow(() -> new ResourceNotFoundException("DataItem not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mục dữ liệu"));
 
                 // Giữ lại các annotation đã APPROVED, chỉ thay thế phần chưa được duyệt.
                 List<Reviewing> existingReviews = reviewingRepository
@@ -292,7 +297,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                 assignmentRepository
                                 .findByAssignmentIdAndAnnotator_UserId(assignmentId, annotatorId)
                                 .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Assignment not found or access denied"));
+                                                "Phân công không được tìm thấy hoặc truy cập bị từ chối"));
 
                 return reviewingRepository
                                 .findByAssignment_AssignmentIdAndDataItem_ItemId(assignmentId, itemId)
@@ -308,18 +313,18 @@ public class AnnotationServiceImpl implements AnnotationService {
                 Assignment assignment = assignmentRepository
                                 .findByAssignmentIdAndAnnotator_UserId(assignmentId, annotatorId)
                                 .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Assignment not found or access denied"));
+                                                "Phân công không được tìm thấy hoặc truy cập bị từ chối"));
 
                 switch (assignment.getStatus()) {
                         case SUBMITTED ->
-                                throw new ValidationException("Assignment is already submitted");
+                                throw new ValidationException("Phân công đã được nộp");
                         case RE_SUBMITTED ->
-                                throw new ValidationException("Assignment is already submitted for re-review");
+                                throw new ValidationException("Phân công đã được nộp lại để xem xét lại");
                         case APPROVED ->
-                                throw new ValidationException("Assignment is already approved");
+                                throw new ValidationException("Phân công đã được phê duyệt");
                         case PENDING ->
                                 throw new ValidationException(
-                                                "Please start annotating before submitting");
+                                                "Vui lòng bắt đầu chú thích trước khi nộp");
                         default -> {
                                 // IN_PROGRESS hoặc REJECTED → cho phép nộp
                         }
@@ -330,7 +335,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 .countByAssignment_AssignmentId(assignmentId);
                 if (totalAnnotations == 0) {
                         throw new ValidationException(
-                                        "Please add at least one annotation before submitting");
+                                        "Vui lòng thêm ít nhất một chú thích trước khi nộp");
                 }
 
                 // Kiểm tra mỗi data item phải có ít nhất 1 nhãn
@@ -340,7 +345,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                 long annotatedItems = reviewingRepository.countAnnotatedItems(assignmentId);
                 if (totalItems > 0 && annotatedItems < totalItems) {
                         throw new ValidationException(
-                                        "Please label all items before submitting (" + annotatedItems + " / " + totalItems + ")");
+                                        "Vui lòng gắn nhãn tất cả các mục trước khi nộp (" + annotatedItems + " / " + totalItems + ")");
                 }
 
                 // Nếu có annotation isImproved=true → đây là lần nộp lại sau khi bị REJECTED
@@ -362,11 +367,11 @@ public class AnnotationServiceImpl implements AnnotationService {
         private void checkCanEdit(Assignment assignment) {
                 if (assignment.getStatus() == AssignmentStatus.SUBMITTED) {
                         throw new ValidationException(
-                                        "Cannot edit: assignment is waiting for review");
+                                        "Không thể chỉnh sửa: phân công đang chờ xem xét");
                 }
                 if (assignment.getStatus() == AssignmentStatus.APPROVED) {
                         throw new ValidationException(
-                                        "Cannot edit: assignment is already approved");
+                                        "Không thể chỉnh sửa: phân công đã được phê duyệt");
                 }
         }
 
@@ -381,7 +386,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 .map(ann -> {
                                         Label label = labelRepository.findById(ann.getLabelId())
                                                         .orElseThrow(() -> new ResourceNotFoundException(
-                                                                        "Label not found: " + ann.getLabelId()));
+                                                                        "Không tìm thấy nhãn: " + ann.getLabelId()));
                                         return Reviewing.builder()
                                                         .assignment(assignment)
                                                         .annotator(assignment.getAnnotator())
@@ -420,6 +425,16 @@ public class AnnotationServiceImpl implements AnnotationService {
 
                 project.setStatus("IN_PROGRESS");
                 projectRepository.save(project);
+        }
+
+        private void syncDatasetToInProgress(Dataset dataset) {
+                if (dataset == null || BatchStatus.COMPLETED.equals(dataset.getStatus())
+                                || BatchStatus.IN_PROGRESS.equals(dataset.getStatus())) {
+                        return;
+                }
+
+                dataset.setStatus(BatchStatus.IN_PROGRESS);
+                datasetRepository.save(dataset);
         }
 
         /**

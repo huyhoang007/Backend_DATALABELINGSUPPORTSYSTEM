@@ -38,11 +38,11 @@ public class ProjectLabelRuleService {
     @Transactional
     public void setProjectLabelRules(Long projectId, List<Long> ruleIds) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
+                .orElseThrow(() -> new ResourceNotFoundException("Dự án không được tìm thấy: " + projectId));
 
         // Kiểm tra project status: không được cấu hình label rules cho project COMPLETED
         if ("COMPLETED".equalsIgnoreCase(project.getStatus())) {
-            throw new RuntimeException("Project is COMPLETED and locked. Only export operations are allowed.");
+            throw new RuntimeException("Dự án đã HOÀN THÀNH và bị khóa. Chỉ cho phép các hoạt động xuất.");
         }
 
         // Remove all existing links for this project

@@ -52,14 +52,14 @@ public class LabelRuleService {
 
     public LabelRuleResponse getById(Long id) {
         LabelRule rule = labelRuleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("LabelRule not found"));
+                .orElseThrow(() -> new RuntimeException("Quy tắc Nhãn không được tìm thấy"));
         return mapToResponse(rule);
     }
 
     @Transactional
     public LabelRuleResponse updateRule(Long id, UpdateLabelRuleRequest request) {
         LabelRule rule = labelRuleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("LabelRule not found"));
+                .orElseThrow(() -> new RuntimeException("Quy tắc Nhãn không được tìm thấy"));
 
         rule.setName(request.getName());
         rule.setRuleContent(request.getRuleContent());
@@ -75,14 +75,14 @@ public class LabelRuleService {
     @Transactional
     public void deleteRule(Long id) {
         LabelRule rule = labelRuleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("LabelRule not found"));
+                .orElseThrow(() -> new RuntimeException("Quy tắc Nhãn không được tìm thấy"));
         labelRuleRepository.delete(rule);
     }
 
     @Transactional
     public void attachLabels(Long ruleId, Set<Long> labelIds) {
         LabelRule rule = labelRuleRepository.findById(ruleId)
-                .orElseThrow(() -> new RuntimeException("LabelRule not found"));
+                .orElseThrow(() -> new RuntimeException("Quy tắc Nhãn không được tìm thấy"));
 
         Set<Label> labels = labelRepository.findAllById(labelIds).stream().collect(Collectors.toSet());
 

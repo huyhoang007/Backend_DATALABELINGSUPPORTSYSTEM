@@ -32,17 +32,17 @@ public class UserService {
     public UserResponse createUser(CreateUserRequest request) {
         // Kiểm tra username đã tồn tại
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new RuntimeException("Tên đăng nhập đã tồn tại");
         }
 
         // Kiểm tra email đã tồn tại
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new RuntimeException("Email đã tồn tại");
         }
 
         // Lấy role theo roleId
         Role role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new RuntimeException("Role not found with ID: " + request.getRoleId()));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy vai trò với ID: " + request.getRoleId()));
 
         // Tạo user mới
         User user = User.builder()
@@ -80,7 +80,7 @@ public class UserService {
             // Kiểm tra email đã tồn tại chưa (trừ email của chính mình)
             if (userRepository.existsByEmail(request.getEmail())
                     && !currentUser.getEmail().equals(request.getEmail())) {
-                throw new RuntimeException("Email already exists");
+                throw new RuntimeException("Email đã tồn tại");
             }
             currentUser.setEmail(request.getEmail());
         }
@@ -99,7 +99,7 @@ public class UserService {
     // Lấy user theo ID - CHỈ ADMIN
     public UserResponse getUserById(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
         return mapToResponse(user);
     }
 
@@ -108,21 +108,21 @@ public class UserService {
     public UserResponse updateUser(Long userId, UpdateUserRequest request) {
         User currentUser = getCurrentAuthenticatedUser();
         User targetUser = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         boolean isAdmin = "ADMIN".equals(currentUser.getRole().getRoleName());
         boolean isSelf = currentUser.getUserId().equals(userId);
 
         // Chỉ cho phép: ADMIN update bất kỳ ai, hoặc user tự update chính mình
         if (!isAdmin && !isSelf) {
-            throw new RuntimeException("Unauthorized: You can only update your own profile");
+            throw new RuntimeException("Không có quyền: Bạn chỉ có thể cập nhật hồ sơ của chính mình");
         }
 
         // Update thông tin cơ bản
         if (request.getEmail() != null) {
             if (userRepository.existsByEmail(request.getEmail())
                     && !targetUser.getEmail().equals(request.getEmail())) {
-                throw new RuntimeException("Email already exists");
+                throw new RuntimeException("Email đã tồn tại");
             }
             targetUser.setEmail(request.getEmail());
         }
@@ -139,7 +139,7 @@ public class UserService {
 
             if (request.getRoleId() != null) {
                 Role role = roleRepository.findById(request.getRoleId())
-                        .orElseThrow(() -> new RuntimeException("Role not found"));
+                        .orElseThrow(() -> new RuntimeException("Không tìm thấy vai trò"));
                 targetUser.setRole(role);
             }
         }
@@ -153,7 +153,7 @@ public class UserService {
     @Transactional
     public UserResponse banUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         user.setStatus("BANNED");
         user.setUpdatedAt(LocalDateTime.now());
@@ -166,7 +166,7 @@ public class UserService {
     @Transactional
     public UserResponse unbanUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         user.setStatus("ACTIVE");
         user.setUpdatedAt(LocalDateTime.now());
@@ -182,11 +182,11 @@ public class UserService {
 
         // Không cho phép xóa chính mình
         if (currentUser.getUserId().equals(userId)) {
-            throw new RuntimeException("Cannot delete yourself");
+            throw new RuntimeException("Không thể xóa chính mình");
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         userRepository.delete(user);
     }
@@ -196,12 +196,12 @@ public class UserService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("User not authenticated");
+            throw new RuntimeException("Người dùng chưa xỚ thực");
         }
 
         String username = authentication.getName();
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
     }
 
     private UserResponse mapToResponse(User user) {
@@ -229,10 +229,10 @@ public class UserService {
     @Transactional
     public UserResponse approveUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         if ("ACTIVE".equals(user.getStatus())) {
-            throw new RuntimeException("User is already active");
+            throw new RuntimeException("Người dùng đã hoạt động");
         }
 
         user.setStatus("ACTIVE");
@@ -246,7 +246,7 @@ public class UserService {
     @Transactional
     public UserResponse rejectUser(Long userId, String reason) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         user.setStatus("REJECTED");
         user.setUpdatedAt(LocalDateTime.now());
@@ -259,10 +259,10 @@ public class UserService {
     @Transactional
     public UserResponse suspendUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         if ("SUSPENDED".equals(user.getStatus())) {
-            throw new RuntimeException("User is already suspended");
+            throw new RuntimeException("Người dùng đã bị tạm dừng");
         }
 
         user.setStatus("SUSPENDED");
@@ -276,10 +276,10 @@ public class UserService {
     @Transactional
     public UserResponse activateUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         if ("ACTIVE".equals(user.getStatus())) {
-            throw new RuntimeException("User is already active");
+            throw new RuntimeException("Người dùng đã hoạt động");
         }
 
         user.setStatus("ACTIVE");

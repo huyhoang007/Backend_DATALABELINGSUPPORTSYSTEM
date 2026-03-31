@@ -12,19 +12,19 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreateUserRequest {
     
-    @NotBlank(message = "Username is required")
+    @NotBlank(message = "Tên đăng nhập là bắt buộc")
     private String username;
     
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @NotBlank(message = "Email là bắt buộc")
+    @Email(message = "Định dạng email không hợp lệ")
     private String email;
     
-    @NotBlank(message = "Password is required")
+    @NotBlank(message = "Mật khẩu là bắt buộc")
     private String password;
     
-    @NotBlank(message = "Full name is required")
+    @NotBlank(message = "Họtên là bắt buộc")
     private String fullName;
     
-    @NotNull(message = "Role ID is required")
+    @NotNull(message = "ID vai trò là bắt buộc")
     private Long roleId; // 1=ADMIN, 2=MANAGER, 3=ANNOTATOR, 4=REVIEWER
 }

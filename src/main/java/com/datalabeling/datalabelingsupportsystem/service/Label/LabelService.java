@@ -21,13 +21,13 @@ public class LabelService {
     public LabelResponse createLabel(CreateLabelRequest request) {
         // Validate unique label name + type combination
         if (labelRepository.findByLabelNameAndLabelType(request.getLabelName(), request.getLabelType()).isPresent()) {
-            throw new RuntimeException("Label with this name and type already exists");
+            throw new RuntimeException("Nhãn với tên và loại này đã tồn tại");
         }
 
         // Validate unique shortcut key
         if (request.getShortcutKey() != null &&
                 labelRepository.existsByShortcutKey((request.getShortcutKey()))) {
-            throw new RuntimeException("Shortcut key already in use");
+            throw new RuntimeException("Phím tắt đã được sử dụng");
         }
 
         Label label = Label.builder()
@@ -58,14 +58,14 @@ public class LabelService {
 
     public LabelResponse getLabelById(Long id) {
         Label label = labelRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Label not found"));
+                .orElseThrow(() -> new RuntimeException("Nhãn không được tìm thấy"));
         return mapToResponse(label);
     }
 
     @Transactional
     public LabelResponse updateLabel(Long id, CreateLabelRequest request) {
         Label label = labelRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Label not found"));
+                .orElseThrow(() -> new RuntimeException("Nhãn không được tìm thấy"));
 
         // ✅ Check uniqueness name+type (ngoại trừ chính label này)
         // Nếu tên hoặc type thay đổi, kiểm tra xem tên+type mới đã tồn tại không
@@ -79,7 +79,7 @@ public class LabelService {
             
             // Nếu tìm thấy label khác với ID hiện tại → lỗi
             if (existingLabel.isPresent() && !existingLabel.get().getLabelId().equals(id)) {
-                throw new RuntimeException("Label with this name and type already exists");
+                throw new RuntimeException("Nhãn với tên và loại này đã tồn tại");
             }
         }
 
@@ -97,7 +97,7 @@ public class LabelService {
     @Transactional
     public void deleteLabel(Long id) {
         Label label = labelRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Label not found"));
+                .orElseThrow(() -> new RuntimeException("Nhãn không được tìm thấy"));
         label.setIsActive(false);
         labelRepository.save(label);
     }
@@ -105,7 +105,7 @@ public class LabelService {
     @Transactional
     public LabelResponse activateLabel(Long id) {
         Label label = labelRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Label not found"));
+                .orElseThrow(() -> new RuntimeException("Nhãn không được tìm thấy"));
         label.setIsActive(true);
         Label updatedLabel = labelRepository.save(label);
         return mapToResponse(updatedLabel);

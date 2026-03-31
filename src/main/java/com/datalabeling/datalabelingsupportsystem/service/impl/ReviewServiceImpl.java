@@ -8,6 +8,7 @@ import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.Annotati
 import com.datalabeling.datalabelingsupportsystem.dto.response.Labeling.AnnotatorAssignmentResponse;
 import com.datalabeling.datalabelingsupportsystem.dto.response.WorkSpace.AnnotationWorkspaceResponse;
 import com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus;
+import com.datalabeling.datalabelingsupportsystem.enums.DataSet.BatchStatus;
 import com.datalabeling.datalabelingsupportsystem.enums.Reviewing.ReviewingStatus;
 import com.datalabeling.datalabelingsupportsystem.exception.ResourceNotFoundException;
 import com.datalabeling.datalabelingsupportsystem.exception.ValidationException;
@@ -65,19 +66,22 @@ public class ReviewServiceImpl implements ReviewService {
         @Transactional
         public AnnotationWorkspaceResponse openReviewWorkspace(Long assignmentId, Long reviewerId) {
                 Assignment assignment = assignmentRepository.findById(assignmentId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Phân công không được tìm thấy"));
 
                 // Kiểm tra reviewer có được giao duyệt assignment này không
                 if (assignment.getReviewer() == null || !assignment.getReviewer().getUserId().equals(reviewerId)) {
-                        throw new ValidationException("Access denied: not assigned reviewer");
+                        throw new ValidationException("Truy cập bị từ chối: không phải là người xem xét được chỉ định");
                 }
+
+                // Đồng bộ dataset status khi reviewer mở workspace
+                syncDatasetToInProgress(assignment.getDataset());
 
                 // Assignment phải ở trạng thái SUBMITTED, RE_SUBMITTED, REJECTED hoặc APPROVED để review
                 if (!(assignment.getStatus() == AssignmentStatus.SUBMITTED
                                 || assignment.getStatus() == AssignmentStatus.RE_SUBMITTED
                                 || assignment.getStatus() == AssignmentStatus.REJECTED
                                 || assignment.getStatus() == AssignmentStatus.APPROVED)) {
-                        throw new ValidationException("Assignment is not ready for review");
+                        throw new ValidationException("Phân công chưa sẵn sàng để xem xét");
                 }
 
                 // Lấy danh sách items và annotations
@@ -161,11 +165,11 @@ public class ReviewServiceImpl implements ReviewService {
         @Override
         public List<AnnotationResponse> getReviewAssignmentAnnotations(Long assignmentId, Long reviewerId) {
                 Assignment assignment = assignmentRepository.findById(assignmentId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Phân công không được tìm thấy"));
 
                 // Kiểm tra reviewer
                 if (assignment.getReviewer() == null || !assignment.getReviewer().getUserId().equals(reviewerId)) {
-                        throw new ValidationException("Access denied: not assigned reviewer");
+                        throw new ValidationException("Truy cập bị từ chối: không phải là người xem xét được chỉ định");
                 }
 
                 return reviewingRepository.findByAssignment_AssignmentId(assignmentId)
@@ -177,11 +181,11 @@ public class ReviewServiceImpl implements ReviewService {
         @Override
         public List<AnnotationResponse> getReviewAnnotationsByItem(Long assignmentId, Long itemId, Long reviewerId) {
                 Assignment assignment = assignmentRepository.findById(assignmentId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Phân công không được tìm thấy"));
 
                 // Kiểm tra reviewer
                 if (assignment.getReviewer() == null || !assignment.getReviewer().getUserId().equals(reviewerId)) {
-                        throw new ValidationException("Access denied: not assigned reviewer");
+                        throw new ValidationException("Truy cập bị từ chối: không phải là người xem xét được chỉ định");
                 }
 
                 return reviewingRepository
@@ -195,17 +199,17 @@ public class ReviewServiceImpl implements ReviewService {
         @Transactional
         public AnnotationResponse reviewAnnotation(Long reviewingId, ReviewAnnotationRequest request, Long reviewerId) {
                 Reviewing reviewing = reviewingRepository.findById(reviewingId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Annotation not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Chú thích không được tìm thấy"));
 
                 Assignment assignment = getAssignment(reviewerId, reviewing);
 
                 // cập nhật trạng thái và policy
                 if (Boolean.TRUE.equals(request.getHasError())) {
                         if (request.getPolicyId() == null) {
-                                throw new ValidationException("policyId is required when hasError is true");
+                                throw new ValidationException("policyId được yêu cầu khi hasError là true");
                         }
                         Policy policy = policyRepository.findById(request.getPolicyId())
-                                        .orElseThrow(() -> new ResourceNotFoundException("Policy not found"));
+                                        .orElseThrow(() -> new ResourceNotFoundException("Chín sách không được tìm thấy"));
                         reviewing.setPolicy(policy);
                         reviewing.setStatus(ReviewingStatus.REJECTED);
                         reviewing.setIsImproved(false);  // ✅ Reset isImproved khi reject
@@ -224,7 +228,7 @@ public class ReviewServiceImpl implements ReviewService {
 
                 // gán reviewer và lưu
                 User reviewer = userRepository.findById(reviewerId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Reviewer not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Người xem xét không được tìm thấy"));
                 reviewing.setReviewer(reviewer);
                 reviewing.setNote(request.getNote());  // ✅ Lưu ghi chú của reviewer
                 reviewing = reviewingRepository.save(reviewing);
@@ -235,17 +239,17 @@ public class ReviewServiceImpl implements ReviewService {
         @Transactional
         public void submitReview(Long assignmentId, Long reviewerId) {
                 Assignment assignment = assignmentRepository.findById(assignmentId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Phân công không được tìm thấy"));
 
                 if (assignment.getReviewer() == null || !assignment.getReviewer().getUserId().equals(reviewerId)) {
-                        throw new ValidationException("Access denied: not assigned reviewer");
+                        throw new ValidationException("Truy cập bị từ chối: không phải là người xem xét được chỉ định");
                 }
 
                 if (assignment.getStatus() != AssignmentStatus.SUBMITTED
                                 && assignment.getStatus() != AssignmentStatus.RE_SUBMITTED
                                 && assignment.getStatus() != AssignmentStatus.REJECTED
                                 && assignment.getStatus() != AssignmentStatus.APPROVED) {
-                        throw new ValidationException("Assignment is not in a reviewable state. Current status: "
+                        throw new ValidationException("Phân công không ở trạng thái có thể xem xét được. Trạng thái hiện tại: "
                                         + assignment.getStatus());
                 }
 
@@ -268,7 +272,13 @@ public class ReviewServiceImpl implements ReviewService {
                                 .filter(r -> r.getStatus() == ReviewingStatus.REJECTED)
                                 .count();
 
-                assignment.setStatus(rejectedCount > 0 ? AssignmentStatus.REJECTED : AssignmentStatus.APPROVED);
+                if (rejectedCount > 0) {
+                        assignment.setStatus(AssignmentStatus.REJECTED);
+                } else {
+                        assignment.setStatus(AssignmentStatus.APPROVED);
+                        // ✅ Cập nhật dataset status khi tất cả annotations được chấp nhận
+                        syncDatasetStatusAfterReview(assignment.getDataset());
+                }
                 assignmentRepository.save(assignment);
                 if (rejectedCount == 0) {
                         syncProjectStatusAfterReview(assignment.getProject());
@@ -322,7 +332,7 @@ public class ReviewServiceImpl implements ReviewService {
                 Assignment assignment = reviewing.getAssignment();
                 // đảm bảo reviewer chính là người được phân công
                 if (assignment.getReviewer() == null || !assignment.getReviewer().getUserId().equals(reviewerId)) {
-                        throw new ValidationException("Access denied: only assigned reviewer can review");
+                        throw new ValidationException("Truy cập bị từ chối: chỉ người xem xét được chỉ định mới có thể xem xét");
                 }
 
                 // assignment phải đang ở trạng thái SUBMITTED, RE_SUBMITTED, REJECTED hoặc APPROVED để review
@@ -330,9 +340,49 @@ public class ReviewServiceImpl implements ReviewService {
                                 || assignment.getStatus() == AssignmentStatus.RE_SUBMITTED
                                 || assignment.getStatus() == AssignmentStatus.REJECTED
                                 || assignment.getStatus() == AssignmentStatus.APPROVED)) {
-                        throw new ValidationException("Assignment is not ready for review");
+                        throw new ValidationException("Phân công chưa sẵn sàng để xem xét");
                 }
                 return assignment;
+        }
+
+        private void syncDatasetToInProgress(Dataset dataset) {
+                if (dataset == null || BatchStatus.COMPLETED.equals(dataset.getStatus())
+                                || BatchStatus.IN_PROGRESS.equals(dataset.getStatus())) {
+                        return;
+                }
+
+                dataset.setStatus(BatchStatus.IN_PROGRESS);
+                datasetRepository.save(dataset);
+        }
+
+        /**
+         * ✅ Cập nhật dataset status khi reviewer submit review
+         * - Nếu tất cả assignments của dataset = APPROVED → dataset = COMPLETED
+         * - Nếu có bất kỳ assignment = PENDING/IN_PROGRESS/REJECTED → dataset = IN_PROGRESS
+         */
+        private void syncDatasetStatusAfterReview(Dataset dataset) {
+                if (dataset == null) {
+                        return;
+                }
+
+                List<Assignment> datasetAssignments = assignmentRepository
+                                .findByDataset_DatasetId(dataset.getDatasetId());
+
+                if (datasetAssignments.isEmpty()) {
+                        return;
+                }
+
+                // Check nếu tất cả assignments đều APPROVED
+                boolean allApproved = datasetAssignments.stream()
+                                .allMatch(a -> a.getStatus() == AssignmentStatus.APPROVED);
+
+                if (allApproved) {
+                        dataset.setStatus(BatchStatus.COMPLETED);
+                } else {
+                        dataset.setStatus(BatchStatus.IN_PROGRESS);
+                }
+
+                datasetRepository.save(dataset);
         }
 
         private AnnotationResponse toAnnotationResponse(Reviewing r) {
