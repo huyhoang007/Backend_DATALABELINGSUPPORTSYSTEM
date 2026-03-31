@@ -152,9 +152,38 @@ public class AssignmentService {
                 .reviewerId(a.getReviewer().getUserId())
                 .reviewerName(a.getReviewer().getFullName())
                 .status(a.getStatus())
+                .displayStatus(getDisplayStatus(a.getStatus()))  // ✅ Map to display status
                 .progress(a.getProgress())
                 .completedAt(a.getCompletedAt())
                 .createdAt(a.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * Convert status gốc → display status thân thiện
+     * Logic: 3 trạng thái chính chỉ
+     * - "Chờ xử lý" = PENDING
+     * - "Đang xử lý" = IN_PROGRESS, SUBMITTED, RE_SUBMITTED, REJECTED
+     * - "Hoàn thành" = APPROVED, COMPLETED
+     */
+    private String getDisplayStatus(AssignmentStatus status) {
+        if (status == null) {
+            return "Chờ xử lý";
+        }
+        
+        switch (status) {
+            case PENDING:
+                return "Chờ xử lý";
+            case IN_PROGRESS:
+            case SUBMITTED:
+            case RE_SUBMITTED:
+            case REJECTED:
+                return "Đang xử lý";
+            case APPROVED:
+            case COMPLETED:
+                return "Hoàn thành";
+            default:
+                return "Chờ xử lý";
+        }
     }
 }

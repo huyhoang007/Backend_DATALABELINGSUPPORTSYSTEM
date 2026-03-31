@@ -21,7 +21,8 @@ public class AssignmentResponse {
     private String annotatorName;
     private Long reviewerId;
     private String reviewerName;
-    private AssignmentStatus status;
+    private AssignmentStatus status;           // ✅ Status thô (PENDING, IN_PROGRESS, SUBMITTED...)
+    private String displayStatus;              // ✅ Status thân thiện (Chờ xử lý, Đang xử lý, Hoàn thành)
     private Integer progress;
     private LocalDateTime completedAt;
     private LocalDateTime createdAt;
