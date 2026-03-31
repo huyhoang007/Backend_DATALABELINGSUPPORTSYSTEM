@@ -28,6 +28,9 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
 
     boolean existsByDataset_DatasetIdAndAnnotator_UserId(Long datasetId, Long annotatorId);
 
+    // ✅ Dataset queries
+    List<Assignment> findByDataset_DatasetId(Long datasetId);
+
     @Query("""
             select a.project.projectId as projectId, a.status as status, count(a) as total
             from Assignment a
