@@ -4,6 +4,7 @@ import com.datalabeling.datalabelingsupportsystem.dto.request.Assignment.CreateA
 import com.datalabeling.datalabelingsupportsystem.dto.response.Assignment.AssignmentResponse;
 import com.datalabeling.datalabelingsupportsystem.pojo.User;
 import com.datalabeling.datalabelingsupportsystem.service.Assignment.AssignmentService;
+import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
@@ -21,6 +23,25 @@ import java.util.List;
 public class AssignmentController {
 
     private final AssignmentService assignmentService;
+    private final UserRepository userRepository;
+
+    /**
+     * Extract userId từ UserDetails (lấy từ username hoặc principal)
+     */
+    private Long extractUserId(UserDetails userDetails) {
+        String username = userDetails.getUsername();
+        // Giả sử username là email hoặc userId dạng string, tìm User theo username
+        Optional<User> user = userRepository.findByUsername(username);
+        if (user.isPresent()) {
+            return user.get().getUserId();
+        }
+        // Nếu không tìm được, thử parse username thành Long (nếu là userId)
+        try {
+            return Long.parseLong(username);
+        } catch (NumberFormatException e) {
+            throw new RuntimeException("Không thể xác định userId từ UserDetails");
+        }
+    }
 
     /**
      * Tạo phân công - chỉ MANAGER
@@ -32,7 +53,7 @@ public class AssignmentController {
             @Valid @RequestBody CreateAssignmentRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long managerId = ((User) userDetails).getUserId(); // cast về User lấy userId
+        Long managerId = extractUserId(userDetails);
         AssignmentResponse response = assignmentService.createAssignment(projectId, request, managerId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -46,7 +67,7 @@ public class AssignmentController {
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long managerId = ((User) userDetails).getUserId();
+        Long managerId = extractUserId(userDetails);
         List<AssignmentResponse> list = assignmentService.getAssignmentsByProject(projectId, managerId);
         return ResponseEntity.ok(list);
     }
@@ -60,7 +81,7 @@ public class AssignmentController {
             @PathVariable Long assignmentId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        Long managerId = ((User) userDetails).getUserId();
+        Long managerId = extractUserId(userDetails);
         assignmentService.deleteAssignment(assignmentId, managerId);
         return ResponseEntity.noContent().build();
     }
