@@ -79,6 +79,13 @@ public class DatasetController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Xóa toàn bộ dataset")
+    @DeleteMapping("/datasets/{datasetId}")
+    public ResponseEntity<Void> deleteDataset(@PathVariable Long datasetId) {
+        datasetService.deleteDataset(datasetId);
+        return ResponseEntity.noContent().build();
+    }
+
     // ─── EXPORT ──────────────────────────────────────────────────────────────
 
     @Operation(summary = "Export dataset dạng JSON", description = "Trả về file JSON chứa toàn bộ ảnh và annotation của dataset. "

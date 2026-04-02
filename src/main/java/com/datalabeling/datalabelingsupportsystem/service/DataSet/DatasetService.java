@@ -186,6 +186,36 @@ public class DatasetService {
         dataItemRepository.save(item);
     }
 
+    /**
+     * DELETE /datasets/{id}
+     * Xóa dataset hoàn toàn (cùng tất cả items)
+     */
+    @Transactional
+    public void deleteDataset(Long datasetId) {
+        Dataset dataset = datasetRepository.findById(datasetId)
+                .orElseThrow(() -> new RuntimeException("Bộ dữ liệu không được tìm thấy với id: " + datasetId));
+
+        // Xóa tất cả data items liên quan
+        List<DataItem> items = dataItemRepository.findByDataset_DatasetId(datasetId);
+        for (DataItem item : items) {
+            // Xóa file từ Azure Blob Storage
+            if (item.getFileUrl() != null) {
+                try {
+                    azureBlobService.deleteFile(item.getFileUrl());
+                } catch (Exception e) {
+                    // Log error nhưng vẫn tiếp tục xóa
+                    System.err.println("Lỗi xóa file từ Azure: " + e.getMessage());
+                }
+            }
+        }
+        
+        // Xóa tất cả data items từ database
+        dataItemRepository.deleteAll(items);
+
+        // Xóa dataset
+        datasetRepository.delete(dataset);
+    }
+
 
     private List<DataItem> uploadAndCreateItems(List<MultipartFile> files, Dataset dataset) throws IOException {
         List<DataItem> items = new ArrayList<>();

@@ -76,4 +76,21 @@ public class AzureBlobService {
             return Files.exists(path) ? Files.readAllBytes(path) : null;
         }
     }
+
+    /**
+     * Delete file từ Azure Blob Storage hoặc local disk
+     */
+    public void deleteFile(String blobName) throws IOException {
+        if (azureEnabled) {
+            BlobClient blobClient = containerClient.getBlobClient(blobName);
+            if (blobClient.exists()) {
+                blobClient.delete();
+            }
+        } else {
+            Path path = Paths.get(localUploadPath).resolve(blobName).normalize();
+            if (Files.exists(path)) {
+                Files.delete(path);
+            }
+        }
+    }
 }
