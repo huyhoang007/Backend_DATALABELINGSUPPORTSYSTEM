@@ -168,9 +168,9 @@ public class ProjectService {
         if ("DRAFT".equals(currentStatus)) {
             return "IN_PROGRESS".equals(newStatus);
         }
-        // IN_PROGRESS có thể chuyển sang PAUSED
+        // IN_PROGRESS có thể chuyển sang PAUSED hoặc COMPLETED
         if ("IN_PROGRESS".equals(currentStatus)) {
-            return "PAUSED".equals(newStatus);
+            return "PAUSED".equals(newStatus) || "COMPLETED".equals(newStatus);
         }
         // PAUSED có thể chuyển lại IN_PROGRESS (resume)
         if ("PAUSED".equals(currentStatus)) {
