@@ -1,6 +1,7 @@
 package com.datalabeling.datalabelingsupportsystem.controller.Analytics;
 
 import com.datalabeling.datalabelingsupportsystem.dto.response.Analytics.*;
+import com.datalabeling.datalabelingsupportsystem.pojo.Violation;
 import com.datalabeling.datalabelingsupportsystem.service.Analytics.ProjectAnalyticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -99,6 +100,47 @@ public class ProjectAnalyticsController {
             @Parameter(description = "Project ID")
             @PathVariable Long projectId) {
         ProjectAnalyticsSummaryResponse response = analyticsService.getProjectAnalyticsSummary(projectId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Get project violation summary",
+            description = "Lấy tóm tắt thống kê vi phạm chính sách dự án"
+    )
+    @PreAuthorize("hasRole('MANAGER')")
+    @GetMapping("/projects/{projectId}/violations/summary")
+    public ResponseEntity<ViolationSummaryResponse> getViolationSummary(
+            @Parameter(description = "Project ID")
+            @PathVariable Long projectId) {
+        ViolationSummaryResponse response = analyticsService.getViolationSummary(projectId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Get violation list",
+            description = "Lấy danh sách vi phạm trong dự án"
+    )
+    @PreAuthorize("hasRole('MANAGER')")
+    @GetMapping("/projects/{projectId}/violations")
+    public ResponseEntity<List<Violation>> getViolations(
+            @Parameter(description = "Project ID")
+            @PathVariable Long projectId) {
+        List<Violation> response = analyticsService.getProjectViolations(projectId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Get violation detail",
+            description = "Lấy chi tiết vi phạm"
+    )
+    @PreAuthorize("hasRole('MANAGER')")
+    @GetMapping("/projects/{projectId}/violations/{violationId}")
+    public ResponseEntity<Violation> getViolation(
+            @Parameter(description = "Project ID")
+            @PathVariable Long projectId,
+            @Parameter(description = "Violation ID")
+            @PathVariable Long violationId) {
+        Violation response = analyticsService.getProjectViolation(projectId, violationId);
         return ResponseEntity.ok(response);
     }
 
