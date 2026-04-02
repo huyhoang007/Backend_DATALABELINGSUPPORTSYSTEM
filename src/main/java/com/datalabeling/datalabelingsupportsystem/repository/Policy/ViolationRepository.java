@@ -1,5 +1,6 @@
 package com.datalabeling.datalabelingsupportsystem.repository.Policy;
 
+import com.datalabeling.datalabelingsupportsystem.pojo.Reviewing;
 import com.datalabeling.datalabelingsupportsystem.pojo.Violation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -30,5 +31,7 @@ public interface ViolationRepository extends JpaRepository<Violation, Long> {
 
     @Query("SELECT v.annotator.userId, COUNT(v) FROM Violation v WHERE v.project.projectId = :projectId GROUP BY v.annotator.userId")
     List<Object[]> countByProject_ProjectIdGroupByAnnotator(@Param("projectId") Long projectId);
+
+    void deleteByReviewingIn(List<Reviewing> reviewings);
 
 }
