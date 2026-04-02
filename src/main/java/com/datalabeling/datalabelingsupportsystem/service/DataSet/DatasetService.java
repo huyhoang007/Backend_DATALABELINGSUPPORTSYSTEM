@@ -299,20 +299,22 @@ public class DatasetService {
         long totalAssignments = statusCounts.values().stream().mapToLong(Long::longValue).sum();
         long completedAssignments = statusCounts.getOrDefault(AssignmentStatus.APPROVED, 0L)
                 + statusCounts.getOrDefault(AssignmentStatus.COMPLETED, 0L);
-        long rejectedAssignments = statusCounts.getOrDefault(AssignmentStatus.REJECTED, 0L);
         long activeAssignments = statusCounts.getOrDefault(AssignmentStatus.IN_PROGRESS, 0L)
                 + statusCounts.getOrDefault(AssignmentStatus.SUBMITTED, 0L)
-                + statusCounts.getOrDefault(AssignmentStatus.RE_SUBMITTED, 0L);
+                + statusCounts.getOrDefault(AssignmentStatus.RE_SUBMITTED, 0L)
+                + statusCounts.getOrDefault(AssignmentStatus.REJECTED, 0L); // Include REJECTED khi có thể gửi lại
 
+        // Nếu tất cả assignment đều APPROVED → COMPLETED
         if (totalAssignments > 0 && completedAssignments == totalAssignments) {
             return BatchStatus.COMPLETED.name();
         }
-        if (rejectedAssignments > 0) {
-            return "REJECTED";
-        }
+        
+        // Nếu còn assignment đang làm (IN_PROGRESS, SUBMITTED, RE_SUBMITTED, hoặc bị từ chối chờ gửi lại) → IN_PROGRESS
         if (activeAssignments > 0) {
             return BatchStatus.IN_PROGRESS.name();
         }
+        
+        // Mặc định PENDING
         return BatchStatus.PENDING.name();
     }
 }
