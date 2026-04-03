@@ -18,6 +18,7 @@
 - DB: bảng `Reviewing`, `violations`, `assignments`, `projects`, `labels`, `policies`...
 
 ## 3. Violation handling
+
 ### 3.1 Entity
 File: `src/main/java/com/datalabeling/datalabelingsupportsystem/pojo/Violation.java`
 - Fields: violationId, project, assignment, annotator, reviewer, policy, label, dataItem, reviewing, description, createdAt, updatedAt
@@ -69,6 +70,7 @@ File: `ProjectAnalyticsService`
 - GET /api/analytics/projects/{projectId}/violations
 - GET /api/analytics/projects/{projectId}/violations/{violationId}
 - GET /api/analytics/projects/{projectId}/violations/summary
+
 ### 5.1 Violation API (mới)
 - GET /api/analytics/projects/{projectId}/violations
   - Trả về danh sách violation dự án: violationId, assignmentId, annotatorId, reviewerId, policyId, labelId, dataItemId, reviewingId, description, createdAt, updatedAt
