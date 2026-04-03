@@ -7,6 +7,7 @@ import com.datalabeling.datalabelingsupportsystem.repository.Assignment.Assignme
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DatasetRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Labeling.ReviewingRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Policy.ViolationRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class ProjectAnalyticsService {
     private final AssignmentRepository assignmentRepository;
     private final ReviewingRepository reviewingRepository;
     private final AnalyticsRepository analyticsRepository;
+    private final ViolationRepository violationRepository;
     private final DatasetRepository datasetRepository;
     private final LabelRepository labelRepository;
     private final UserRepository userRepository;
@@ -72,19 +74,32 @@ public class ProjectAnalyticsService {
         long totalAnnotations = analyticsRepository.countTotalAnnotationsByProject(projectId);
         long acceptedAnnotations = analyticsRepository.countAcceptedAnnotationsByProject(projectId);
         long rejectedAnnotations = totalAnnotations - acceptedAnnotations;
-        long totalViolations = analyticsRepository.countPolicyViolationsByProject(projectId);
+        long totalViolations = violationRepository.countByProject_ProjectId(projectId);
         long totalLabelsUsed = analyticsRepository.countDistinctLabelsUsed(projectId);
         long improvementsFound = analyticsRepository.countImprovementsByProject(projectId);
         
         double annotationAccuracy = totalAnnotations > 0 ? 
                 (double) acceptedAnnotations / totalAnnotations * 100 : 0;
+
+        long distinctViolationReviewings = violationRepository.countDistinctReviewingViolationsByProject(projectId);
+        long annotationWithoutViolation = Math.max(0, totalAnnotations - distinctViolationReviewings);
+
         double policyComplianceRate = totalAnnotations > 0 ? 
-                ((double) (totalAnnotations - totalViolations) / totalAnnotations) * 100 : 100;
+                (double) annotationWithoutViolation / totalAnnotations * 100 : 100;
+
+        long criticalCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 4);
+        long highCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 3);
+        long mediumCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 2);
+        long lowCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 1);
+
+        double weightedViolationScore = highCount * 1.0 + mediumCount * 0.5 + lowCount * 0.2 + criticalCount * 1.5;
+        double weightedComplianceAdjust = totalAnnotations > 0 ? Math.max(0, 100 - (weightedViolationScore / totalAnnotations * 100)) : 100;
+
         double improvementRate = totalAnnotations > 0 ? 
                 (double) improvementsFound / totalAnnotations * 100 : 0;
-        
-        // Tính overall quality score
-        double overallScore = (annotationAccuracy * 0.5 + policyComplianceRate * 0.3 + improvementRate * 0.2) / 100 * 100;
+
+        // Tính overall quality score kết hợp weighted compliance
+        double overallScore = (annotationAccuracy * 0.45 + weightedComplianceAdjust * 0.35 + improvementRate * 0.2);
         String qualityLevel = determineQualityLevel(overallScore);
         
         return QualityMetricsResponse.builder()
@@ -175,7 +190,63 @@ public class ProjectAnalyticsService {
         
         return responses;
     }
-    
+
+    /**
+     * Lấy tóm tắt thống kê violation
+     */
+    public ViolationSummaryResponse getViolationSummary(Long projectId) {
+        Project project = getProjectAndValidateAccess(projectId);
+
+        long totalViolations = violationRepository.countByProject_ProjectId(projectId);
+        long typeWrong = violationRepository.countByProject_ProjectIdAndViolationType(projectId, com.datalabeling.datalabelingsupportsystem.enums.Policies.ViolationType.WRONG_LABEL);
+        long typeMissing = violationRepository.countByProject_ProjectIdAndViolationType(projectId, com.datalabeling.datalabelingsupportsystem.enums.Policies.ViolationType.MISSING_LABEL);
+        long typePolicy = violationRepository.countByProject_ProjectIdAndViolationType(projectId, com.datalabeling.datalabelingsupportsystem.enums.Policies.ViolationType.POLICY_VIOLATION);
+        long typeFormat = violationRepository.countByProject_ProjectIdAndViolationType(projectId, com.datalabeling.datalabelingsupportsystem.enums.Policies.ViolationType.FORMAT_ERROR);
+
+        // by user
+        Map<Long, Long> byUser = new HashMap<>();
+        List<Object[]> userCounts = violationRepository.countByProject_ProjectIdGroupByAnnotator(projectId);
+        for (Object[] row : userCounts) {
+            Long userId = ((Number) row[0]).longValue();
+            Long count = ((Number) row[1]).longValue();
+            byUser.put(userId, count);
+        }
+
+        Map<String, Long> byType = Map.of(
+                "WRONG_LABEL", typeWrong,
+                "MISSING_LABEL", typeMissing,
+                "POLICY_VIOLATION", typePolicy,
+                "FORMAT_ERROR", typeFormat
+        );
+
+        return ViolationSummaryResponse.builder()
+                .projectId(projectId)
+                .total(totalViolations)
+                .byType(byType)
+                .byUser(byUser)
+                .build();
+    }
+
+    /**
+     * Lấy danh sách violation dự án
+     */
+    public List<Violation> getProjectViolations(Long projectId) {
+        getProjectAndValidateAccess(projectId);
+        return violationRepository.findAll().stream()
+                .filter(v -> v.getProject().getProjectId().equals(projectId))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy chi tiết violation
+     */
+    public Violation getProjectViolation(Long projectId, Long violationId) {
+        getProjectAndValidateAccess(projectId);
+        return violationRepository.findById(violationId)
+                .filter(v -> v.getProject().getProjectId().equals(projectId))
+                .orElseThrow(() -> new RuntimeException("Violation not found"));
+    }
+
     /**
      * Lấy tóm tắt phân tích dự án
      */
@@ -281,7 +352,7 @@ public class ProjectAnalyticsService {
 
         long annotationsCount = analyticsRepository.countAnnotationsByUserInProject(projectId, user.getUserId());
         long approvedAnnotations = analyticsRepository.countApprovedAnnotationsByUserInProject(projectId, user.getUserId());
-        long policiesViolated = analyticsRepository.countPolicyViolationsByUserInProject(projectId, user.getUserId());
+        long policiesViolated = violationRepository.countByProject_ProjectIdAndAnnotator_UserId(projectId, user.getUserId());
         double annotationQuality = annotationsCount > 0 ? (double) approvedAnnotations / annotationsCount * 100 : 0;
         double policyComplianceRate = annotationsCount > 0
                 ? ((double) (annotationsCount - policiesViolated) / annotationsCount) * 100

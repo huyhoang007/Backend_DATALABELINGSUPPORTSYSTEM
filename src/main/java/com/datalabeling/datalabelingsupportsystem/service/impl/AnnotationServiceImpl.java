@@ -1,6 +1,7 @@
 package com.datalabeling.datalabelingsupportsystem.service.impl;
 
 import com.datalabeling.datalabelingsupportsystem.dto.request.Labeling.BatchSaveAnnotationRequest;
+import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.datalabeling.datalabelingsupportsystem.dto.response.DataItem.DataItemResponse;
@@ -21,7 +22,7 @@ import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DatasetRepo
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRuleRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Labeling.ReviewingRepository;
-import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Policy.ViolationRepository;
 import com.datalabeling.datalabelingsupportsystem.service.Labeling.AnnotationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,7 @@ public class AnnotationServiceImpl implements AnnotationService {
         private final ObjectMapper objectMapper;
         private final ProjectRepository projectRepository;
         private final DatasetRepository datasetRepository;
+        private final ViolationRepository violationRepository;
 
         // 1. LẤY DANH SÁCH TASK CỦA ANNOTATOR
         @Override
@@ -257,6 +259,8 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 .filter(r -> r.getStatus() != ReviewingStatus.APPROVED)
                                 .collect(Collectors.toList());
                 if (!toDelete.isEmpty()) {
+                        // Delete associated violations first to avoid foreign key constraint violation
+                        violationRepository.deleteByReviewingIn(toDelete);
                         reviewingRepository.deleteAll(toDelete);
                 }
 

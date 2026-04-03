@@ -20,6 +20,7 @@ import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelReposito
 import com.datalabeling.datalabelingsupportsystem.repository.Label.LabelRuleRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Labeling.ReviewingRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Policy.PolicyRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Policy.ViolationRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
 import com.datalabeling.datalabelingsupportsystem.service.Labeling.ReviewService;
@@ -42,6 +43,7 @@ public class ReviewServiceImpl implements ReviewService {
         private final LabelRuleRepository labelRuleRepository;
         private final UserRepository userRepository;
         private final PolicyRepository policyRepository;
+        private final ViolationRepository violationRepository;
         private final ProjectRepository projectRepository;
 
         @Override
@@ -232,7 +234,53 @@ public class ReviewServiceImpl implements ReviewService {
                 reviewing.setReviewer(reviewer);
                 reviewing.setNote(request.getNote());  // ✅ Lưu ghi chú của reviewer
                 reviewing = reviewingRepository.save(reviewing);
+
+                // Nếu là vi phạm chính sách, lưu record Violation riêng hoặc cập nhật nếu cùng (reviewing, policy)
+                if (request.getHasError() != null && request.getHasError() && reviewing.getPolicy() != null) {
+                        Violation existingViolation = violationRepository.findByReviewing_ReviewingIdAndPolicy_PolicyId(
+                                        reviewing.getReviewingId(), reviewing.getPolicy().getPolicyId());
+
+                        // map type + severity từ policy
+                        com.datalabeling.datalabelingsupportsystem.enums.Policies.ViolationType violationType =
+                                        com.datalabeling.datalabelingsupportsystem.enums.Policies.ViolationType.POLICY_VIOLATION;
+                        int severity = mapPolicyErrorLevelToSeverity(reviewing.getPolicy().getErrorLevel());
+
+                        if (existingViolation == null) {
+                                Violation violation = Violation.builder()
+                                                .project(assignment.getProject())
+                                                .assignment(assignment)
+                                                .annotator(reviewing.getAnnotator())
+                                                .reviewer(reviewer)
+                                                .policy(reviewing.getPolicy())
+                                                .label(reviewing.getLabel())
+                                                .dataItem(reviewing.getDataItem())
+                                                .reviewing(reviewing)
+                                                .violationType(violationType)
+                                                .severity(severity)
+                                                .description(request.getNote())
+                                                .build();
+                                violationRepository.save(violation);
+                        } else {
+                                existingViolation.setViolationType(violationType);
+                                existingViolation.setSeverity(severity);
+                                existingViolation.setDescription(request.getNote());
+                                existingViolation.setReviewer(reviewer);
+                                existingViolation.setUpdatedAt(java.time.LocalDateTime.now());
+                                violationRepository.save(existingViolation);
+                        }
+                }
+
                 return toAnnotationResponse(reviewing);
+        }
+
+        private int mapPolicyErrorLevelToSeverity(com.datalabeling.datalabelingsupportsystem.enums.Policies.ErrorLevel errorLevel) {
+                if (errorLevel == null) return 2;
+                return switch (errorLevel) {
+                        case LOW -> 1;
+                        case MEDIUM -> 2;
+                        case HIGH -> 3;
+                        case CRITICAL -> 4;
+                };
         }
 
         @Override
