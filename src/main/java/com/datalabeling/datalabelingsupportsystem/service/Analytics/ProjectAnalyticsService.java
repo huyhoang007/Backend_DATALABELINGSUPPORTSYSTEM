@@ -319,7 +319,7 @@ public class ProjectAnalyticsService {
                 .collect(Collectors.toList());
         
         long total = counts.stream().mapToLong(Long::longValue).sum();
-        long expectedPerLabel = total / distribution.size();
+        double expectedPerLabel = (double) total / distribution.size();
         
         double variance = counts.stream()
                 .mapToDouble(count -> Math.pow(count - expectedPerLabel, 2))
