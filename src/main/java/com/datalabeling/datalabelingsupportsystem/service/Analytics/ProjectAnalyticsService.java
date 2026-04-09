@@ -87,8 +87,12 @@ public class ProjectAnalyticsService {
         long criticalCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 4);
         long weightedViolationPoints = violationRepository.sumWeightedViolationPointsByProject(projectId);
 
-        double policyComplianceRate = totalReviewsCompleted > 0 ?
-                Math.max(0, 100 - ((double) weightedViolationPoints / totalReviewsCompleted) * 100) : 100;
+        // Historical violation score is retained even after annotations are fixed.
+        // Use a ratio against completed reviews so FE can keep reading policyComplianceRate
+        // without saturating too quickly to 0 when historical violations are high.
+        double policyComplianceRate = totalReviewsCompleted > 0
+                ? ((double) totalReviewsCompleted / (totalReviewsCompleted + weightedViolationPoints)) * 100
+                : 100;
 
         double improvementRate = totalReviewsCompleted > 0 ? 
                 (double) improvementsFound / totalReviewsCompleted * 100 : 0;
