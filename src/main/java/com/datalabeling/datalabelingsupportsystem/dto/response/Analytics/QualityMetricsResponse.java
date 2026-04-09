@@ -19,6 +19,7 @@ public class QualityMetricsResponse {
     private Double annotationAccuracy; // Tỉ lệ annotation chính xác (%)
     private Long totalAnnotations;
     private Long acceptedAnnotations;
+    private Long pendingAnnotations;
     private Long rejectedAnnotations;
     
     // Tuân thủ Chính sách
