@@ -32,6 +32,20 @@ public interface ViolationRepository extends JpaRepository<Violation, Long> {
     @Query("SELECT v.annotator.userId, COUNT(v) FROM Violation v WHERE v.project.projectId = :projectId GROUP BY v.annotator.userId")
     List<Object[]> countByProject_ProjectIdGroupByAnnotator(@Param("projectId") Long projectId);
 
+    List<Violation> findByReviewingIn(List<Reviewing> reviewings);
+
+    @Query("SELECT COALESCE(SUM(CASE " +
+            "WHEN v.severity = 1 THEN 1 " +
+            "WHEN v.severity = 2 THEN 2 " +
+            "WHEN v.severity = 3 THEN 4 " +
+            "WHEN v.severity = 4 THEN 6 " +
+            "ELSE 0 END), 0) " +
+            "FROM Violation v " +
+            "WHERE v.project.projectId = :projectId " +
+            "AND v.annotator.userId = :userId")
+    long sumWeightedViolationPointsByProjectAndAnnotator(@Param("projectId") Long projectId,
+                                                         @Param("userId") Long userId);
+
     void deleteByReviewingIn(List<Reviewing> reviewings);
 
 }

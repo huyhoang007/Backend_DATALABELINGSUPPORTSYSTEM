@@ -3,21 +3,26 @@ package com.datalabeling.datalabelingsupportsystem.service.Assignment;
 import com.datalabeling.datalabelingsupportsystem.dto.request.Assignment.CreateAssignmentRequest;
 import com.datalabeling.datalabelingsupportsystem.dto.response.Assignment.AssignmentResponse;
 import com.datalabeling.datalabelingsupportsystem.enums.Assignment.AssignmentStatus;
+import com.datalabeling.datalabelingsupportsystem.enums.Reviewing.ReviewingStatus;
 import com.datalabeling.datalabelingsupportsystem.pojo.Assignment;
 import com.datalabeling.datalabelingsupportsystem.pojo.Dataset;
 import com.datalabeling.datalabelingsupportsystem.pojo.Project;
+import com.datalabeling.datalabelingsupportsystem.pojo.Reviewing;
 import com.datalabeling.datalabelingsupportsystem.pojo.User;
 import com.datalabeling.datalabelingsupportsystem.repository.Assignment.AssignmentRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.DataSet.DatasetRepository;
-import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
-import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectLabelRuleRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Labeling.ReviewingRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Policy.ProjectPolicyRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectLabelRuleRepository;
+import com.datalabeling.datalabelingsupportsystem.repository.Project.ProjectRepository;
 import com.datalabeling.datalabelingsupportsystem.repository.Users.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,65 +35,55 @@ public class AssignmentService {
     private final UserRepository userRepository;
     private final ProjectLabelRuleRepository projectLabelRuleRepository;
     private final ProjectPolicyRepository projectPolicyRepository;
+    private final ReviewingRepository reviewingRepository;
 
-    /**
-     * Manager tạo phân công: chọn dataset, annotator, reviewer
-     */
     @Transactional
     public AssignmentResponse createAssignment(Long projectId, CreateAssignmentRequest request, Long managerId) {
-
-        // Kiểm tra project tồn tại và manager có quyền
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Dự án không được tìm thấy: " + projectId));
+                .orElseThrow(() -> new RuntimeException("Du an khong duoc tim thay: " + projectId));
 
         if (!project.getManager().getUserId().equals(managerId)) {
-            throw new RuntimeException("Bạn không phải là quản lý của dự án này");
+            throw new RuntimeException("Ban khong phai la quan ly cua du an nay");
         }
 
-        // Kiểm tra project status: không được phân công cho project COMPLETED
         if ("COMPLETED".equalsIgnoreCase(project.getStatus())) {
-            throw new RuntimeException("Dự án đã HOÀN THÀNH và bị khóa. Chỉ cho phép các hoạt động xuất.");
+            throw new RuntimeException("Du an da hoan thanh va bi khoa. Chi cho phep cac hoat dong xuat.");
         }
 
-        // Kiểm tra project có label rules và policies
         boolean hasLabelRules = !projectLabelRuleRepository.findByProject_ProjectId(projectId).isEmpty();
         boolean hasPolicies = !projectPolicyRepository.findByProject(project).isEmpty();
-        
+
         if (!hasLabelRules) {
-            throw new RuntimeException("Vui lòng thêm quy tắc gắn nhãn cho dự án này trước khi giao nhiệm vụ.");
+            throw new RuntimeException("Vui long them quy tac gan nhan cho du an nay truoc khi giao nhiem vu.");
         }
         if (!hasPolicies) {
-            throw new RuntimeException("Vui lòng thêm chính sách cho dự án này trước khi giao nhiệm vụ.");
+            throw new RuntimeException("Vui long them chinh sach cho du an nay truoc khi giao nhiem vu.");
         }
 
-        // Kiểm tra dataset thuộc project
         Dataset dataset = datasetRepository.findById(request.getDatasetId())
-                .orElseThrow(() -> new RuntimeException("Bộ dữ liệu không được tìm thấy: " + request.getDatasetId()));
+                .orElseThrow(() -> new RuntimeException("Bo du lieu khong duoc tim thay: " + request.getDatasetId()));
 
         if (!dataset.getProject().getProjectId().equals(projectId)) {
-            throw new RuntimeException("Bộ dữ liệu không thuộc dự án này");
+            throw new RuntimeException("Bo du lieu khong thuoc du an nay");
         }
 
-        // Kiểm tra annotator
         User annotator = userRepository.findById(request.getAnnotatorId())
-                .orElseThrow(() -> new RuntimeException("Người chú thích không được tìm thấy: " + request.getAnnotatorId()));
+                .orElseThrow(() -> new RuntimeException("Nguoi chu thich khong duoc tim thay: " + request.getAnnotatorId()));
 
         if (!"ANNOTATOR".equalsIgnoreCase(annotator.getRole().getRoleName())) {
-            throw new RuntimeException("Người dùng " + annotator.getUsername() + " không phải là ANNOTATOR");
+            throw new RuntimeException("Nguoi dung " + annotator.getUsername() + " khong phai la ANNOTATOR");
         }
 
-        // Kiểm tra reviewer
         User reviewer = userRepository.findById(request.getReviewerId())
-                .orElseThrow(() -> new RuntimeException("Người xem xét không được tìm thấy: " + request.getReviewerId()));
+                .orElseThrow(() -> new RuntimeException("Nguoi xem xet khong duoc tim thay: " + request.getReviewerId()));
 
         if (!"REVIEWER".equalsIgnoreCase(reviewer.getRole().getRoleName())) {
-            throw new RuntimeException("Người dùng " + reviewer.getUsername() + " không phải là REVIEWER");
+            throw new RuntimeException("Nguoi dung " + reviewer.getUsername() + " khong phai la REVIEWER");
         }
 
-        // Kiểm tra dataset đã được assign chưa
         if (assignmentRepository.existsByDataset_DatasetIdAndAnnotator_UserId(
                 request.getDatasetId(), request.getAnnotatorId())) {
-            throw new RuntimeException("Bộ dữ liệu này đã được gán cho người chú thích này");
+            throw new RuntimeException("Bo du lieu nay da duoc gan cho nguoi chu thich nay");
         }
 
         Assignment assignment = Assignment.builder()
@@ -104,15 +99,12 @@ public class AssignmentService {
         return mapToResponse(saved);
     }
 
-    /**
-     * Manager xem danh sách phân công trong project
-     */
     public List<AssignmentResponse> getAssignmentsByProject(Long projectId, Long managerId) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Dự án không được tìm thấy: " + projectId));
+                .orElseThrow(() -> new RuntimeException("Du an khong duoc tim thay: " + projectId));
 
         if (!project.getManager().getUserId().equals(managerId)) {
-            throw new RuntimeException("Bạn không phải là quản lý của dự án này");
+            throw new RuntimeException("Ban khong phai la quan ly cua du an nay");
         }
 
         return assignmentRepository.findByProject_ProjectId(projectId)
@@ -121,69 +113,79 @@ public class AssignmentService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Manager xóa phân công (chỉ khi status PENDING)
-     */
     @Transactional
     public void deleteAssignment(Long assignmentId, Long managerId) {
         Assignment assignment = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new RuntimeException("Phân công không được tìm thấy: " + assignmentId));
+                .orElseThrow(() -> new RuntimeException("Phan cong khong duoc tim thay: " + assignmentId));
 
         if (!assignment.getProject().getManager().getUserId().equals(managerId)) {
-            throw new RuntimeException("Bạn không phải là quản lý của dự án này");
+            throw new RuntimeException("Ban khong phai la quan ly cua du an nay");
         }
 
         if (assignment.getStatus() != AssignmentStatus.PENDING) {
-            throw new RuntimeException("Không thể xóa phân công với trạng thái: " + assignment.getStatus());
+            throw new RuntimeException("Khong the xoa phan cong voi trang thai: " + assignment.getStatus());
         }
 
         assignmentRepository.delete(assignment);
     }
 
-    private AssignmentResponse mapToResponse(Assignment a) {
+    private AssignmentResponse mapToResponse(Assignment assignment) {
         return AssignmentResponse.builder()
-                .assignmentId(a.getAssignmentId())
-                .projectId(a.getProject().getProjectId())
-                .projectName(a.getProject().getName())
-                .datasetId(a.getDataset().getDatasetId())
-                .datasetName(a.getDataset().getName())
-                .annotatorId(a.getAnnotator().getUserId())
-                .annotatorName(a.getAnnotator().getFullName())
-                .reviewerId(a.getReviewer().getUserId())
-                .reviewerName(a.getReviewer().getFullName())
-                .status(a.getStatus())
-                .displayStatus(getDisplayStatus(a.getStatus()))  // ✅ Map to display status
-                .progress(a.getProgress())
-                .completedAt(a.getCompletedAt())
-                .createdAt(a.getCreatedAt())
+                .assignmentId(assignment.getAssignmentId())
+                .projectId(assignment.getProject().getProjectId())
+                .projectName(assignment.getProject().getName())
+                .datasetId(assignment.getDataset().getDatasetId())
+                .datasetName(assignment.getDataset().getName())
+                .annotatorId(assignment.getAnnotator().getUserId())
+                .annotatorName(assignment.getAnnotator().getFullName())
+                .reviewerId(assignment.getReviewer().getUserId())
+                .reviewerName(assignment.getReviewer().getFullName())
+                .status(assignment.getStatus())
+                .displayStatus(resolveManagerDisplayStatus(assignment))
+                .progress(assignment.getProgress())
+                .completedAt(assignment.getCompletedAt())
+                .createdAt(assignment.getCreatedAt())
                 .build();
     }
 
-    /**
-     * Convert status gốc → display status thân thiện
-     * Logic: 3 trạng thái chính chỉ
-     * - "Chờ xử lý" = PENDING
-     * - "Đang xử lý" = IN_PROGRESS, SUBMITTED, RE_SUBMITTED, REJECTED
-     * - "Hoàn thành" = APPROVED, COMPLETED
-     */
-    private String getDisplayStatus(AssignmentStatus status) {
+    private String resolveManagerDisplayStatus(Assignment assignment) {
+        AssignmentStatus status = assignment.getStatus();
         if (status == null) {
-            return "Chờ xử lý";
+            return "Cho xu ly";
         }
-        
-        switch (status) {
-            case PENDING:
-                return "Chờ xử lý";
-            case IN_PROGRESS:
-            case SUBMITTED:
-            case RE_SUBMITTED:
-            case REJECTED:
-                return "Đang xử lý";
-            case APPROVED:
-            case COMPLETED:
-                return "Hoàn thành";
-            default:
-                return "Chờ xử lý";
+
+        Map<String, Reviewing> latestReviewings = reviewingRepository
+                .findByAssignment_AssignmentId(assignment.getAssignmentId())
+                .stream()
+                .collect(Collectors.toMap(
+                        review -> review.getDataItem().getItemId() + "::" + String.valueOf(review.getGeometry()),
+                        review -> review,
+                        (existing, replacement) -> replacement,
+                        LinkedHashMap::new));
+
+        boolean hasRejected = latestReviewings.values().stream()
+                .anyMatch(review -> review.getStatus() == ReviewingStatus.REJECTED);
+        boolean hasPendingReview = latestReviewings.values().stream()
+                .anyMatch(review -> review.getStatus() == null || review.getStatus() == ReviewingStatus.PENDING);
+
+        if (hasRejected) {
+            return "Can sua";
         }
+
+        if (hasPendingReview) {
+            return switch (status) {
+                case PENDING -> "Cho xu ly";
+                case IN_PROGRESS -> "Dang xu ly";
+                default -> "Cho duyet";
+            };
+        }
+
+        return switch (status) {
+            case PENDING -> "Cho xu ly";
+            case IN_PROGRESS -> "Dang xu ly";
+            case SUBMITTED, RE_SUBMITTED -> "Cho duyet";
+            case REJECTED -> "Can sua";
+            case APPROVED, COMPLETED -> "Hoan thanh";
+        };
     }
 }

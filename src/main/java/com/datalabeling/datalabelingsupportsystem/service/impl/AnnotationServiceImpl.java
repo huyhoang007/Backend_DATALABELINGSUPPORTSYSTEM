@@ -259,8 +259,13 @@ public class AnnotationServiceImpl implements AnnotationService {
                                 .filter(r -> r.getStatus() != ReviewingStatus.APPROVED)
                                 .collect(Collectors.toList());
                 if (!toDelete.isEmpty()) {
-                        // Delete associated violations first to avoid foreign key constraint violation
-                        violationRepository.deleteByReviewingIn(toDelete);
+                        // Keep violation history even after annotator fixes the annotation.
+                        // We detach the old violations from the deleted review records instead of removing them.
+                        List<Violation> historicalViolations = violationRepository.findByReviewingIn(toDelete);
+                        if (!historicalViolations.isEmpty()) {
+                                historicalViolations.forEach(violation -> violation.setReviewing(null));
+                                violationRepository.saveAll(historicalViolations);
+                        }
                         reviewingRepository.deleteAll(toDelete);
                 }
 

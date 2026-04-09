@@ -104,10 +104,12 @@ public class ProjectAnalyticsService {
         // Tính overall quality score kết hợp weighted compliance
         double reviewCoverage = totalAnnotations > 0 ? 
                 (double) totalReviewsCompleted / totalAnnotations * 100 : 0;
+
         double overallScore = annotationAccuracy * 0.45
                 + weightedComplianceAdjust * 0.30
                 + calculateLabelDistributionBalance(projectId) * 0.15
                 + reviewCoverage * 0.10;
+                
         String qualityLevel = determineQualityLevel(overallScore);
         
         return QualityMetricsResponse.builder()
@@ -362,10 +364,12 @@ public class ProjectAnalyticsService {
         long annotationsCount = analyticsRepository.countAnnotationsByUserInProject(projectId, user.getUserId());
         long approvedAnnotations = analyticsRepository.countApprovedAnnotationsByUserInProject(projectId, user.getUserId());
         long policiesViolated = violationRepository.countByProject_ProjectIdAndAnnotator_UserId(projectId, user.getUserId());
+        long weightedViolationPoints = violationRepository
+                .sumWeightedViolationPointsByProjectAndAnnotator(projectId, user.getUserId());
         double annotationQuality = annotationsCount > 0 ? (double) approvedAnnotations / annotationsCount * 100 : 0;
         double policyComplianceRate = annotationsCount > 0
-                ? ((double) (annotationsCount - policiesViolated) / annotationsCount) * 100
-                : 0;
+                ? Math.max(0, 100 - ((double) weightedViolationPoints / annotationsCount) * 100)
+                : 100;
 
         long reviewsCount = analyticsRepository.countReviewsByUserInProject(projectId, user.getUserId());
         long approvedCount = analyticsRepository.countApprovedReviewsByUserInProject(projectId, user.getUserId());

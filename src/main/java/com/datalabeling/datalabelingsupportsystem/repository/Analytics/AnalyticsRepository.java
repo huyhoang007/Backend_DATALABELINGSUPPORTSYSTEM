@@ -22,10 +22,17 @@ public interface AnalyticsRepository extends JpaRepository<Assignment, Long> {
     
     @Query("SELECT COUNT(DISTINCT di) FROM DataItem di " +
             "WHERE di.dataset.project.projectId = :projectId " +
-            "AND NOT EXISTS (" +
+            "AND EXISTS (" +
             "  SELECT 1 FROM Reviewing r " +
             "  WHERE r.dataItem = di " +
-            "  AND r.status != 'APPROVED'" +
+            "  AND r.assignment.project.projectId = :projectId " +
+            "  AND r.status = 'APPROVED'" +
+            ") " +
+            "AND NOT EXISTS (" +
+            "  SELECT 1 FROM Reviewing r2 " +
+            "  WHERE r2.dataItem = di " +
+            "  AND r2.assignment.project.projectId = :projectId " +
+            "  AND r2.status != 'APPROVED'" +
             ")")
     long countApprovedItemsByProject(@Param("projectId") Long projectId);
     
