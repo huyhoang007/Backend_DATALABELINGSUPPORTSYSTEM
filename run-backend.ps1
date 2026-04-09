@@ -12,6 +12,37 @@ $ErrorActionPreference = "Continue"
 $backendDir = "c:\Users\hai yen\Desktop\BE1\Backend_DATALABELINGSUPPORTSYSTEM"
 
 # ============================================
+# LOAD ENVIRONMENT VARIABLES FROM .env FILE
+# ============================================
+function Load-EnvFile {
+    param(
+        [string]$EnvFilePath
+    )
+    
+    if (Test-Path $EnvFilePath) {
+        Write-Host "📋 Loading environment variables from .env file..." -ForegroundColor Cyan
+        Get-Content $EnvFilePath | ForEach-Object {
+            if ($_ -match '^\s*([^#][^=]*?)=(.*)$') {
+                $key = $matches[1].Trim()
+                $value = $matches[2].Trim()
+                $value = $value -replace '^["'']|["'']$', ''  # Remove quotes if present
+                [Environment]::SetEnvironmentVariable($key, $value, "Process")
+                Write-Host "   ✅ Set $key" -ForegroundColor Green
+            }
+        }
+        Write-Host ""
+    }
+    else {
+        Write-Host "   ⚠️  .env file not found at $EnvFilePath" -ForegroundColor Yellow
+        Write-Host "   Application will use default values or fail" -ForegroundColor Yellow
+    }
+}
+
+# Load .env file from current backend directory
+$envPath = Join-Path $backendDir ".env"
+Load-EnvFile -EnvFilePath $envPath
+
+# ============================================
 # 1. CHECK JAVA VERSION
 # ============================================
 Write-Host "1️⃣ Checking Java version..." -ForegroundColor Yellow

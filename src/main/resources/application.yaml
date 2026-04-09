@@ -1,11 +1,11 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   datasource:
-    url: jdbc:postgresql://dpg-d6np6oshg0os73c93r50-a.singapore-postgres.render.com:5432/datalabeling
-    username: datalabeling_user
-    password: gHxMAP0qunUnPAbwceIaGQUQPgCVr3uE
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -35,9 +35,14 @@ logging:
     org.aspectj: DEBUG
 
 jwt:
-  secret: ibelievewecandoitmyguysneverstopgoingweneedtogoforeverlifeisanunstoppablejourneyofobstaclesinwhichwecannotavoid
-  expiration: 86400000
+  secret: ${JWT_SECRET:ibelievewecandoitmyguysneverstopgoingweneedtogoforeverlifeisanunstoppablejourneyofobstaclesinwhichwecannotavoid}
+  expiration: ${JWT_EXPIRATION:86400000}
 
 app:
   upload:
-    path: uploads
+    path: ${UPLOAD_PATH:uploads}
+
+azure:
+  storage:
+    connection-string: ${AZURE_STORAGE_CONNECTION_STRING}
+    container: ${AZURE_STORAGE_CONTAINER}

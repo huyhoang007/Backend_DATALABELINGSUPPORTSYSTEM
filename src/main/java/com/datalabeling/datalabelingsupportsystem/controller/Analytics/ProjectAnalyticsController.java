@@ -38,7 +38,7 @@ public class ProjectAnalyticsController {
     
     @Operation(
             summary = "Get project quality metrics",
-            description = "Lấy chỉ số chất lượng dự án (chính xác, tuân thủ chính sách, cân bằng label)"
+            description = "Lấy chỉ số chất lượng dự án (chính xác, tuân thủ, cân bằng label)"
     )
     @PreAuthorize("hasRole('MANAGER')")
     @GetMapping("/projects/{projectId}/quality")
