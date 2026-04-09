@@ -106,7 +106,31 @@ public interface AnalyticsRepository extends JpaRepository<Assignment, Long> {
     @Query("SELECT COUNT(r) FROM Reviewing r " +
             "WHERE r.assignment.project.projectId = :projectId AND r.status = 'APPROVED'")
     long countAcceptedAnnotationsByProject(@Param("projectId") Long projectId);
-    
+
+    @Query("SELECT COUNT(r) FROM Reviewing r " +
+            "WHERE r.assignment.project.projectId = :projectId " +
+            "AND (r.status = 'PENDING' OR r.status IS NULL) " +
+            "AND NOT EXISTS (" +
+            "  SELECT 1 FROM Reviewing r2 " +
+            "  WHERE r2.assignment = r.assignment " +
+            "  AND r2.dataItem = r.dataItem " +
+            "  AND ((r2.geometry = r.geometry) OR (r2.geometry IS NULL AND r.geometry IS NULL)) " +
+            "  AND r2.reviewingId > r.reviewingId" +
+            ")")
+    long countPendingAnnotationsByProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT COUNT(r) FROM Reviewing r " +
+            "WHERE r.assignment.project.projectId = :projectId " +
+            "AND r.status = 'REJECTED' " +
+            "AND NOT EXISTS (" +
+            "  SELECT 1 FROM Reviewing r2 " +
+            "  WHERE r2.assignment = r.assignment " +
+            "  AND r2.dataItem = r.dataItem " +
+            "  AND ((r2.geometry = r.geometry) OR (r2.geometry IS NULL AND r.geometry IS NULL)) " +
+            "  AND r2.reviewingId > r.reviewingId" +
+            ")")
+    long countRejectedAnnotationsByProject(@Param("projectId") Long projectId);
+     
     @Query("SELECT COUNT(DISTINCT r.policy) FROM Reviewing r " +
             "WHERE r.assignment.project.projectId = :projectId " +
             "AND r.policy.policyId IS NOT NULL")

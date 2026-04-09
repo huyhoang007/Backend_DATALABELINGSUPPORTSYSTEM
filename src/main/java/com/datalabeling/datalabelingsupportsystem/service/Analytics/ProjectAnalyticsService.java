@@ -73,19 +73,22 @@ public class ProjectAnalyticsService {
         
         long totalAnnotations = analyticsRepository.countTotalAnnotationsByProject(projectId);
         long acceptedAnnotations = analyticsRepository.countAcceptedAnnotationsByProject(projectId);
-        long rejectedAnnotations = totalAnnotations - acceptedAnnotations;
+        long pendingAnnotations = analyticsRepository.countPendingAnnotationsByProject(projectId);
+        long rejectedAnnotations = analyticsRepository.countRejectedAnnotationsByProject(projectId);
         long totalViolations = violationRepository.countByProject_ProjectId(projectId);
         long totalLabelsUsed = analyticsRepository.countDistinctLabelsUsed(projectId);
         long improvementsFound = analyticsRepository.countImprovementsByProject(projectId);
         
-        double annotationAccuracy = totalAnnotations > 0 ? 
-                (double) acceptedAnnotations / totalAnnotations * 100 : 0;
+        long totalReviewsCompleted = acceptedAnnotations + rejectedAnnotations;
+
+        double annotationAccuracy = totalReviewsCompleted > 0 ? 
+                (double) acceptedAnnotations / totalReviewsCompleted * 100 : 0;
 
         long distinctViolationReviewings = violationRepository.countDistinctReviewingViolationsByProject(projectId);
-        long annotationWithoutViolation = Math.max(0, totalAnnotations - distinctViolationReviewings);
+        long annotationWithoutViolation = Math.max(0, totalReviewsCompleted - distinctViolationReviewings);
 
-        double policyComplianceRate = totalAnnotations > 0 ? 
-                (double) annotationWithoutViolation / totalAnnotations * 100 : 100;
+        double policyComplianceRate = totalReviewsCompleted > 0 ? 
+                (double) annotationWithoutViolation / totalReviewsCompleted * 100 : 100;
 
         long criticalCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 4);
         long highCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 3);
@@ -93,13 +96,18 @@ public class ProjectAnalyticsService {
         long lowCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 1);
 
         double weightedViolationScore = highCount * 1.0 + mediumCount * 0.5 + lowCount * 0.2 + criticalCount * 1.5;
-        double weightedComplianceAdjust = totalAnnotations > 0 ? Math.max(0, 100 - (weightedViolationScore / totalAnnotations * 100)) : 100;
+        double weightedComplianceAdjust = totalReviewsCompleted > 0 ? Math.max(0, 100 - (weightedViolationScore / totalReviewsCompleted * 100)) : 100;
 
-        double improvementRate = totalAnnotations > 0 ? 
-                (double) improvementsFound / totalAnnotations * 100 : 0;
+        double improvementRate = totalReviewsCompleted > 0 ? 
+                (double) improvementsFound / totalReviewsCompleted * 100 : 0;
 
         // Tính overall quality score kết hợp weighted compliance
-        double overallScore = (annotationAccuracy * 0.45 + weightedComplianceAdjust * 0.35 + improvementRate * 0.2);
+        double reviewCoverage = totalAnnotations > 0 ? 
+                (double) totalReviewsCompleted / totalAnnotations * 100 : 0;
+        double overallScore = annotationAccuracy * 0.45
+                + weightedComplianceAdjust * 0.30
+                + calculateLabelDistributionBalance(projectId) * 0.15
+                + reviewCoverage * 0.10;
         String qualityLevel = determineQualityLevel(overallScore);
         
         return QualityMetricsResponse.builder()
@@ -108,6 +116,7 @@ public class ProjectAnalyticsService {
                 .annotationAccuracy(Math.min(annotationAccuracy, 100.0))
                 .totalAnnotations(totalAnnotations)
                 .acceptedAnnotations(acceptedAnnotations)
+                .pendingAnnotations(pendingAnnotations)
                 .rejectedAnnotations(rejectedAnnotations)
                 .policyComplianceRate(Math.min(policyComplianceRate, 100.0))
                 .totalPolicyViolations(totalViolations)
@@ -115,7 +124,7 @@ public class ProjectAnalyticsService {
                 .minorViolations(totalViolations - totalViolations / 3)
                 .totalLabelUsed((int) totalLabelsUsed)
                 .labelDistributionBalance(calculateLabelDistributionBalance(projectId))
-                .totalReviewsCompleted(acceptedAnnotations + rejectedAnnotations)
+                .totalReviewsCompleted(totalReviewsCompleted)
                 .improvementsFound(improvementsFound)
                 .improvementRate(Math.min(improvementRate, 100.0))
                 .overallQualityScore(Math.min(overallScore, 100.0))
@@ -412,11 +421,25 @@ public class ProjectAnalyticsService {
                 .collect(Collectors.toList());
         
         long usageCount = reviews.size();
-        long approvedCount = reviews.stream().filter(r -> "APPROVED".equals(r.getStatus().toString())).count();
-        long errorCount = reviews.stream().filter(r -> !"APPROVED".equals(r.getStatus().toString())).count();
+        long approvedCount = reviews.stream()
+                .filter(r -> r.getStatus() != null)
+                .filter(r -> "APPROVED".equals(r.getStatus().toString()))
+                .count();
+        long errorCount = reviews.stream()
+                .filter(r -> r.getStatus() != null)
+                .filter(r -> "REJECTED".equals(r.getStatus().toString()))
+                .count();
+        long reviewedCount = approvedCount + errorCount;
+        long violationCount = reviews.stream()
+                .filter(r -> r.getStatus() != null)
+                .filter(r -> "REJECTED".equals(r.getStatus().toString()))
+                .filter(r -> r.getPolicy() != null)
+                .count();
         
-        double accuracy = usageCount > 0 ? (double) approvedCount / usageCount * 100 : 0;
-        String status = accuracy >= 80 ? "HEALTHY" : accuracy >= 60 ? "WARNING" : "CRITICAL";
+        double accuracy = reviewedCount > 0 ? (double) approvedCount / reviewedCount * 100 : 100;
+        String status = reviewedCount == 0
+                ? "HEALTHY"
+                : accuracy >= 80 ? "HEALTHY" : accuracy >= 60 ? "WARNING" : "CRITICAL";
         
         return ComponentQualityResponse.builder()
                 .componentType("LABEL")
@@ -427,6 +450,7 @@ public class ProjectAnalyticsService {
                 .qualityScore(accuracy)
                 .status(status)
                 .accuracy(accuracy)
+                .violationCount(violationCount)
                 .recommendation(generateLabelRecommendation(accuracy, usageCount))
                 .build();
     }
