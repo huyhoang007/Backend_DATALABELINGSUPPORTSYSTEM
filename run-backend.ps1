@@ -9,7 +9,7 @@ Write-Host "🚀 BACKEND SETUP & RUN SCRIPT" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
 
 $ErrorActionPreference = "Continue"
-$backendDir = "c:\Users\hai yen\Desktop\BE1\Backend_DATALABELINGSUPPORTSYSTEM"
+$backendDir = "c:\Users\whisa\Downloads\BE\Backend_DATALABELINGSUPPORTSYSTEM"
 
 # ============================================
 # LOAD ENVIRONMENT VARIABLES FROM .env FILE
