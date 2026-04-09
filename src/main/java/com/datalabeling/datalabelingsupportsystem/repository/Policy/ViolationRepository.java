@@ -41,6 +41,16 @@ public interface ViolationRepository extends JpaRepository<Violation, Long> {
             "WHEN v.severity = 4 THEN 6 " +
             "ELSE 0 END), 0) " +
             "FROM Violation v " +
+            "WHERE v.project.projectId = :projectId")
+    long sumWeightedViolationPointsByProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT COALESCE(SUM(CASE " +
+            "WHEN v.severity = 1 THEN 1 " +
+            "WHEN v.severity = 2 THEN 2 " +
+            "WHEN v.severity = 3 THEN 4 " +
+            "WHEN v.severity = 4 THEN 6 " +
+            "ELSE 0 END), 0) " +
+            "FROM Violation v " +
             "WHERE v.project.projectId = :projectId " +
             "AND v.annotator.userId = :userId")
     long sumWeightedViolationPointsByProjectAndAnnotator(@Param("projectId") Long projectId,

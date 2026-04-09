@@ -84,19 +84,11 @@ public class ProjectAnalyticsService {
         double annotationAccuracy = totalReviewsCompleted > 0 ? 
                 (double) acceptedAnnotations / totalReviewsCompleted * 100 : 0;
 
-        long distinctViolationReviewings = violationRepository.countDistinctReviewingViolationsByProject(projectId);
-        long annotationWithoutViolation = Math.max(0, totalReviewsCompleted - distinctViolationReviewings);
-
-        double policyComplianceRate = totalReviewsCompleted > 0 ? 
-                (double) annotationWithoutViolation / totalReviewsCompleted * 100 : 100;
-
         long criticalCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 4);
-        long highCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 3);
-        long mediumCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 2);
-        long lowCount = violationRepository.countByProject_ProjectIdAndSeverity(projectId, 1);
+        long weightedViolationPoints = violationRepository.sumWeightedViolationPointsByProject(projectId);
 
-        double weightedViolationScore = highCount * 1.0 + mediumCount * 0.5 + lowCount * 0.2 + criticalCount * 1.5;
-        double weightedComplianceAdjust = totalReviewsCompleted > 0 ? Math.max(0, 100 - (weightedViolationScore / totalReviewsCompleted * 100)) : 100;
+        double policyComplianceRate = totalReviewsCompleted > 0 ?
+                Math.max(0, 100 - ((double) weightedViolationPoints / totalReviewsCompleted) * 100) : 100;
 
         double improvementRate = totalReviewsCompleted > 0 ? 
                 (double) improvementsFound / totalReviewsCompleted * 100 : 0;
@@ -106,7 +98,7 @@ public class ProjectAnalyticsService {
                 (double) totalReviewsCompleted / totalAnnotations * 100 : 0;
 
         double overallScore = annotationAccuracy * 0.45
-                + weightedComplianceAdjust * 0.30
+                + policyComplianceRate * 0.30
                 + calculateLabelDistributionBalance(projectId) * 0.15
                 + reviewCoverage * 0.10;
                 
@@ -122,8 +114,8 @@ public class ProjectAnalyticsService {
                 .rejectedAnnotations(rejectedAnnotations)
                 .policyComplianceRate(Math.min(policyComplianceRate, 100.0))
                 .totalPolicyViolations(totalViolations)
-                .criticalViolations(totalViolations / 3) // Ước tính
-                .minorViolations(totalViolations - totalViolations / 3)
+                .criticalViolations(criticalCount)
+                .minorViolations(Math.max(totalViolations - criticalCount, 0))
                 .totalLabelUsed((int) totalLabelsUsed)
                 .labelDistributionBalance(calculateLabelDistributionBalance(projectId))
                 .totalReviewsCompleted(totalReviewsCompleted)
